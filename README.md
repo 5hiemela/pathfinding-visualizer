@@ -6,13 +6,13 @@ This project visualizes classic graph algorithms and maze generation techniques 
 
 ## Algorithms
 ### Pathfinding
-- Breadth-First Search (BFS)
-- Dijkstra’s Algorithm
-- A* Search
+- [ ] Breadth-First Search (BFS)
+- [ ] Dijkstra’s Algorithm
+- [ ] A* Search
 
 ### Maze Generation
-- Prim’s Algorithm
-- Kruskal’s Algorithm
+- [ ] Prim’s Algorithm
+- [ ] Kruskal’s Algorithm
 
 ## Roadmap
 - [ ] Real-time step-by-step visualization
