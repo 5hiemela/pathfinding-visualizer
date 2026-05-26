@@ -15,10 +15,7 @@ const int GRID_HEIGHT = 30;
 
 std::vector<std::vector<Cell>> grid;
 
-const float CELL_SIZE = 0.04f;
-
 void drawCell(float x, float y, float size) {
-
     glBegin(GL_LINE_LOOP);
 
     glVertex2f(x, y);
@@ -36,14 +33,16 @@ int main() {
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
+    // Keep viewport synced with window size
+    glfwSetFramebufferSizeCallback(window, [](GLFWwindow*, int w, int h) {
+        glViewport(0, 0, w, h);
+    });
 
+    ImGui::CreateContext();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
 
     grid.resize(GRID_HEIGHT);
-
     for (int y = 0; y < GRID_HEIGHT; y++) {
         for (int x = 0; x < GRID_WIDTH; x++) {
             grid[y].push_back(Cell{x, y, false});
@@ -58,6 +57,7 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        // UI
         ImGui::Begin("Control Panel");
         ImGui::Text("GLFW + ImGui is working");
         ImGui::Button("Test");
@@ -68,14 +68,35 @@ int main() {
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        for (int y = 0; y < GRID_HEIGHT; y++) {
+        // Get current window size
+        int width, height;
+        glfwGetFramebufferSize(window, &width, &height);
 
+        float aspect = (float)width / (float)height;
+
+        // Base cell size in NDC space
+        float cellSizeX = 2.0f / GRID_WIDTH;
+        float cellSizeY = 2.0f / GRID_HEIGHT;
+
+        // Keep squares
+        float cellSize = (cellSizeX < cellSizeY) ? cellSizeX : cellSizeY;
+
+        // Grid size in NDC
+        float gridW = cellSize * GRID_WIDTH;
+        float gridH = cellSize * GRID_HEIGHT;
+
+        // Centered origin
+        float offsetX = -gridW / 2.0f;
+        float offsetY =  gridH / 2.0f;
+
+        // Render grid
+        for (int y = 0; y < GRID_HEIGHT; y++) {
             for (int x = 0; x < GRID_WIDTH; x++) {
 
-                float screenX = -1.0f + (x * CELL_SIZE);
-                float screenY =  1.0f - (y * CELL_SIZE);
+                float screenX = offsetX + x * cellSize;
+                float screenY = offsetY - y * cellSize;
 
-                drawCell(screenX, screenY, CELL_SIZE);
+                drawCell(screenX, screenY, cellSize);
             }
         }
 
