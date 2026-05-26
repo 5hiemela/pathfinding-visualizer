@@ -8,6 +8,8 @@
 struct Cell {
     int x, y;
     bool isWall = false;
+    bool isStart = false;
+    bool isEnd = false;
 };
 
 const int GRID_WIDTH = 80;
@@ -15,14 +17,23 @@ const int GRID_HEIGHT = 45;
 
 std::vector<std::vector<Cell>> grid;
 
-void drawCell(float x, float y, float size) {
-    glBegin(GL_LINE_LOOP);
-
+void drawCell(float x, float y, float size)
+{
+    // fill
+    glBegin(GL_QUADS);
     glVertex2f(x, y);
     glVertex2f(x + size, y);
     glVertex2f(x + size, y - size);
     glVertex2f(x, y - size);
+    glEnd();
 
+    // outline
+    glColor3f(0.15f, 0.15f, 0.15f);
+    glBegin(GL_LINE_LOOP);
+    glVertex2f(x, y);
+    glVertex2f(x + size, y);
+    glVertex2f(x + size, y - size);
+    glVertex2f(x, y - size);
     glEnd();
 }
 
@@ -58,6 +69,9 @@ Cell getCellFromMouse(GLFWwindow* window)
 
     return Cell{gridX, gridY, false};
 }
+
+int startX = -1, startY = -1;
+int endX = -1, endY = -1;
 
 int main() {
     glfwInit();
@@ -101,15 +115,45 @@ int main() {
         // Mouse click logic
         ImGuiIO& io = ImGui::GetIO();
 
-        if (!io.WantCaptureMouse &&
-            glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+        if (!io.WantCaptureMouse)
         {
             Cell c = getCellFromMouse(window);
+            int x = c.x;
+            int y = c.y;
 
-            if (c.x >= 0 && c.x < GRID_WIDTH &&
-                c.y >= 0 && c.y < GRID_HEIGHT)
+            if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT)
             {
-                grid[c.y][c.x].isWall = !grid[c.y][c.x].isWall;
+                // LEFT CLICK - WALL TOGGLE
+                if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+                {
+                    grid[y][x].isWall = !grid[y][x].isWall;
+                }
+
+                // RIGHT CLICK - START NODE
+                if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+                {
+                    // clear old start
+                    if (startX != -1)
+                        grid[startY][startX].isStart = false;
+
+                    startX = x;
+                    startY = y;
+
+                    grid[y][x].isStart = true;
+                }
+
+                // MIDDLE CLICK - END NODE
+                if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
+                {
+                    // clear old end
+                    if (endX != -1)
+                        grid[endY][endX].isEnd = false;
+
+                    endX = x;
+                    endY = y;
+
+                    grid[y][x].isEnd = true;
+                }
             }
         }
 
@@ -144,9 +188,20 @@ int main() {
                 float screenX = offsetX + x * cellSize;
                 float screenY = offsetY - y * cellSize;
 
-                if (grid[y][x].isWall) {
+                if (grid[y][x].isStart)
+                {
+                    glColor3f(0.0f, 1.0f, 0.0f); // green
+                }
+                else if (grid[y][x].isEnd)
+                {
+                    glColor3f(1.0f, 0.0f, 0.0f); // red
+                }
+                else if (grid[y][x].isWall)
+                {
                     glColor3f(0.05f, 0.05f, 0.05f); // dark wall
-                } else {
+                }
+                else
+                {
                     glColor3f(0.9f, 0.9f, 0.9f); // empty cell
                 }
 
