@@ -28,6 +28,9 @@ bool bfsStarted = false;
 std::pair<int,int> parent[80][45];
 bool foundEnd = false;
 
+double lastStepTime = 0.0;
+double bfsDelay = 0.02; // 20ms per step
+
 void drawCell(float x, float y, float size)
 {
     glBegin(GL_QUADS);
@@ -84,10 +87,12 @@ void startBFS(int sx, int sy)
     while (!bfsQueue.empty()) bfsQueue.pop();
     memset(visited, false, sizeof(visited));
 
+    foundEnd = false;
+
     bfsQueue.push({sx, sy});
     visited[sx][sy] = true;
-
     grid[sy][sx].visited = true;
+
     bfsStarted = true;
 }
 
@@ -118,7 +123,7 @@ void bfsStep()
         parent[nx][ny] = {x, y};   // store where we came from
         bfsQueue.push({nx, ny});
 
-        // STOP CONDITION
+        // Stop condition
         if (grid[ny][nx].isEnd)
         {
             foundEnd = true;
@@ -160,7 +165,7 @@ int main() {
     grid.resize(GRID_HEIGHT);
     for (int y = 0; y < GRID_HEIGHT; y++)
         for (int x = 0; x < GRID_WIDTH; x++)
-            grid[y].push_back(Cell{x, y});
+            grid[y].push_back(Cell{});
 
     while (!glfwWindowShouldClose(window))
     {
@@ -176,21 +181,39 @@ int main() {
 
         ImGui::Render();
 
+        // Space starts the BFS algorithm
         static bool spacePressedLastFrame = false;
+        bool spacePressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
 
-        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && !spacePressedLastFrame)
+        if (spacePressed && !spacePressedLastFrame)
         {
             if (!bfsStarted && startX != -1)
+            {
                 startBFS(startX, startY);
-
-            bfsStep();
-
-            if (foundEnd && grid[endY][endX].isPath == false)
-                buildPath(endX, endY);
+            }
         }
 
-        spacePressedLastFrame = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+        spacePressedLastFrame = spacePressed;
 
+        // Auto BFS timing loop
+        double currentTime = glfwGetTime();
+
+        if (bfsStarted && !foundEnd)
+        {
+            if (currentTime - lastStepTime >= bfsDelay)
+            {
+                bfsStep();
+                lastStepTime = currentTime;
+            }
+        }
+
+        // Build path when done
+        if (foundEnd && !grid[endY][endX].isPath)
+        {
+            buildPath(endX, endY);
+        }
+
+        // Mouse click logic
         ImGuiIO& io = ImGui::GetIO();
 
         if (!io.WantCaptureMouse)
@@ -224,6 +247,7 @@ int main() {
             }
         }
 
+        // Render
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
