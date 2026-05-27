@@ -6,7 +6,7 @@ This project visualizes classic graph algorithms and maze generation techniques 
 
 ## Algorithms
 ### Pathfinding
-- [ ] Breadth-First Search (BFS)
+- [X] Breadth-First Search (BFS)
 - [ ] Dijkstra’s Algorithm
 - [ ] A* Search
 
