@@ -15,7 +15,7 @@ This project visualizes classic graph algorithms and maze generation techniques 
 - [ ] Kruskal’s Algorithm
 
 ## Roadmap
-- [ ] Real-time step-by-step visualization
+- [X] Real-time step-by-step visualization
 - [X] Interactive grid system
 - [ ] Adjustable execution speed
 - [ ] Algorithm selection UI
