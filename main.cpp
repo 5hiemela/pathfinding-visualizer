@@ -4,21 +4,10 @@
 
 #include <GLFW/glfw3.h>
 #include <vector>
-#include <queue>
-#include <cstring>
 
 #include "Cell.h"
 #include "Grid.h"
-
-std::queue<std::pair<int,int>> bfsQueue;
-bool visited[80][45] = {false};
-bool bfsStarted = false;
-
-std::pair<int,int> parent[80][45];
-bool foundEnd = false;
-
-double lastStepTime = 0.0;
-double bfsDelay = 0.02; // 20ms per step
+#include "BFS.h"
 
 void drawCell(float x, float y, float size)
 {
@@ -60,7 +49,7 @@ Cell getCellFromMouse(GLFWwindow* window)
     float gridH = cellSize * GRID_HEIGHT;
 
     float offsetX = -gridW / 2.0f;
-    float offsetY =  gridH / 2.0f;
+    float offsetY = gridH / 2.0f;
 
     int gridX = (int)((ndcX - offsetX) / cellSize);
     int gridY = (int)((offsetY - ndcY) / cellSize);
@@ -71,79 +60,16 @@ Cell getCellFromMouse(GLFWwindow* window)
 int startX = -1, startY = -1;
 int endX = -1, endY = -1;
 
-void startBFS(int sx, int sy)
+int main()
 {
-    while (!bfsQueue.empty()) bfsQueue.pop();
-    memset(visited, false, sizeof(visited));
-
-    foundEnd = false;
-
-    bfsQueue.push({sx, sy});
-    visited[sx][sy] = true;
-    grid[sy][sx].visited = true;
-
-    bfsStarted = true;
-}
-
-void bfsStep()
-{
-    if (bfsQueue.empty() || foundEnd) return;
-
-    auto [x, y] = bfsQueue.front();
-    bfsQueue.pop();
-
-    int dx[4] = {1, -1, 0, 0};
-    int dy[4] = {0, 0, 1, -1};
-
-    for (int i = 0; i < 4; i++)
-    {
-        int nx = x + dx[i];
-        int ny = y + dy[i];
-
-        if (nx < 0 || nx >= GRID_WIDTH || ny < 0 || ny >= GRID_HEIGHT)
-            continue;
-
-        if (visited[nx][ny] || grid[ny][nx].isWall)
-            continue;
-
-        visited[nx][ny] = true;
-        grid[ny][nx].visited = true;
-
-        parent[nx][ny] = {x, y};   // store where we came from
-        bfsQueue.push({nx, ny});
-
-        // Stop condition
-        if (grid[ny][nx].isEnd)
-        {
-            foundEnd = true;
-            return;
-        }
-    }
-}
-
-void buildPath(int ex, int ey)
-{
-    int x = ex;
-    int y = ey;
-
-    while (!(x == startX && y == startY))
-    {
-        grid[y][x].isPath = true;
-
-        auto p = parent[x][y];
-        x = p.first;
-        y = p.second;
-    }
-}
-
-int main() {
     glfwInit();
 
     GLFWwindow* window = glfwCreateWindow(800, 600, "Pathfinding Visualizer", nullptr, nullptr);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
-    glfwSetFramebufferSizeCallback(window, [](GLFWwindow*, int w, int h) {
+    glfwSetFramebufferSizeCallback(window, [](GLFWwindow*, int w, int h)
+    {
         glViewport(0, 0, w, h);
     });
 
@@ -173,16 +99,16 @@ int main() {
 
         if (spacePressed && !spacePressedLastFrame)
         {
-            if (!bfsStarted && startX != -1)
-            {
+            if (startX != -1 && startY != -1)
                 startBFS(startX, startY);
-            }
         }
 
         spacePressedLastFrame = spacePressed;
 
         // Auto BFS timing loop
+        static double lastStepTime = 0.0;
         double currentTime = glfwGetTime();
+        float bfsDelay = 0.01f;
 
         if (bfsStarted && !foundEnd)
         {

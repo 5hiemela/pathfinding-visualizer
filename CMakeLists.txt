@@ -19,6 +19,8 @@ add_executable(PathfindingVisualizer
         Cell.h
         Grid.h
         Grid.cpp
+        BFS.h
+        BFS.cpp
 )
 
 target_include_directories(PathfindingVisualizer PRIVATE
