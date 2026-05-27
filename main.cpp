@@ -7,14 +7,7 @@
 #include <queue>
 #include <cstring>
 
-struct Cell {
-    int x, y;
-    bool isWall = false;
-    bool isStart = false;
-    bool isEnd = false;
-    bool visited = false;
-    bool isPath = false;
-};
+#include "Cell.h"
 
 const int GRID_WIDTH = 80;
 const int GRID_HEIGHT = 45;
