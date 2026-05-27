@@ -8,11 +8,7 @@
 #include <cstring>
 
 #include "Cell.h"
-
-const int GRID_WIDTH = 80;
-const int GRID_HEIGHT = 45;
-
-std::vector<std::vector<Cell>> grid;
+#include "Grid.h"
 
 std::queue<std::pair<int,int>> bfsQueue;
 bool visited[80][45] = {false};
@@ -155,10 +151,7 @@ int main() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 130");
 
-    grid.resize(GRID_HEIGHT);
-    for (int y = 0; y < GRID_HEIGHT; y++)
-        for (int x = 0; x < GRID_WIDTH; x++)
-            grid[y].push_back(Cell{});
+    initializeGrid();
 
     while (!glfwWindowShouldClose(window))
     {

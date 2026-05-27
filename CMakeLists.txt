@@ -17,6 +17,8 @@ add_executable(PathfindingVisualizer
         extern/imgui/backends/imgui_impl_glfw.cpp
         extern/imgui/backends/imgui_impl_opengl3.cpp
         Cell.h
+        Grid.h
+        Grid.cpp
 )
 
 target_include_directories(PathfindingVisualizer PRIVATE
