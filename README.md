@@ -16,7 +16,7 @@ This project visualizes classic graph algorithms and maze generation techniques 
 
 ## Roadmap
 - [ ] Real-time step-by-step visualization
-- [ ] Interactive grid system
+- [X] Interactive grid system
 - [ ] Adjustable execution speed
 - [ ] Algorithm selection UI
 - [ ] Performance timing display
