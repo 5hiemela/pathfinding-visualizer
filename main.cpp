@@ -87,13 +87,38 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        // ImGui Control Panel
         ImGui::Begin("Control Panel");
-        ImGui::Text("GLFW + ImGui");
+        ImGui::Text("GLFW + ImGui Visualizer");
+        ImGui::Separator();
+
+        // Reset Path Search State
+        if (ImGui::Button("Reset Path / Search"))
+        {
+            bfsStarted = false;
+            foundEnd = false;
+            resetSearchState();
+        }
+
+        // Clear Entire Grid (Wipes paths AND walls back to empty)
+        if (ImGui::Button("Clear Entire Grid"))
+        {
+            bfsStarted = false;
+            foundEnd = false;
+            resetSearchState();
+            clearAllWalls();
+
+            // Clear start/end location nodes
+            if (startX != -1 && startY != -1) grid[startY][startX].isStart = false;
+            if (endX != -1 && endY != -1) grid[endY][endX].isEnd = false;
+            startX = -1; startY = -1;
+            endX = -1; endY = -1;
+        }
         ImGui::End();
 
         ImGui::Render();
 
-        // Space starts the BFS algorithm
+        // Space key starts the BFS algorithm
         static bool spacePressedLastFrame = false;
         bool spacePressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
 
@@ -102,7 +127,6 @@ int main()
             if (startX != -1 && startY != -1)
                 startBFS(startX, startY);
         }
-
         spacePressedLastFrame = spacePressed;
 
         // Auto BFS timing loop
@@ -125,7 +149,7 @@ int main()
             buildPath(endX, endY);
         }
 
-        // Mouse click logic
+        // Mouse Click Logic
         ImGuiIO& io = ImGui::GetIO();
 
         if (!io.WantCaptureMouse)
@@ -136,30 +160,47 @@ int main()
 
             if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT)
             {
+                // Checks if Shift key is being held down
+                bool shiftPressed = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ||
+                                     glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
+
+                // Left Click: Place Wall node
                 if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-                    grid[y][x].isWall = !grid[y][x].isWall;
-
-                if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
                 {
-                    if (startX != -1)
-                        grid[startY][startX].isStart = false;
-
-                    startX = x; startY = y;
-                    grid[y][x].isStart = true;
+                    if (!grid[y][x].isStart && !grid[y][x].isEnd) {
+                        if (shiftPressed) {
+                            grid[y][x].isWall = false;  // Shift + Left Click clears walls
+                        } else {
+                            grid[y][x].isWall = true;   // Hold Left Click paints walls
+                        }
+                    }
                 }
 
+                // Right Click: Place Start node
+                if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+                {
+                    if (!grid[y][x].isEnd) {
+                        if (startX != -1) grid[startY][startX].isStart = false;
+                        startX = x; startY = y;
+                        grid[y][x].isStart = true;
+                        grid[y][x].isWall = false; // Clear wall if placed over one
+                    }
+                }
+
+                // Middle Click: Place End node
                 if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
                 {
-                    if (endX != -1)
-                        grid[endY][endX].isEnd = false;
-
-                    endX = x; endY = y;
-                    grid[y][x].isEnd = true;
+                    if (!grid[y][x].isStart) {
+                        if (endX != -1) grid[endY][endX].isEnd = false;
+                        endX = x; endY = y;
+                        grid[y][x].isEnd = true;
+                        grid[y][x].isWall = false; // Clear wall if placed over one
+                    }
                 }
             }
         }
 
-        // Render
+        // OpenGL Draw Loop
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -178,17 +219,17 @@ int main()
                 float screenY = offsetY - y * cellSize;
 
                 if (grid[y][x].isStart)
-                    glColor3f(0.0f, 1.0f, 0.35f); // green
+                    glColor3f(0.0f, 1.0f, 0.35f); // Green
                 else if (grid[y][x].isEnd)
-                    glColor3f(1.0f, 0.15f, 0.15f); // red
+                    glColor3f(1.0f, 0.15f, 0.15f); // Red
                 else if (grid[y][x].isPath)
-                    glColor3f(1.0f, 0.85f, 0.0f); // yellow
+                    glColor3f(1.0f, 0.85f, 0.0f); // Yellow
                 else if (grid[y][x].visited)
-                    glColor3f(0.2f, 0.4f, 1.0f); // blue
+                    glColor3f(0.2f, 0.4f, 1.0f); // Blue
                 else if (grid[y][x].isWall)
-                    glColor3f(0.05f, 0.05f, 0.05f); // black
+                    glColor3f(0.05f, 0.05f, 0.05f); // Black
                 else
-                    glColor3f(0.9f, 0.9f, 0.9f); // empty
+                    glColor3f(0.9f, 0.9f, 0.9f); // Empty
 
                 drawCell(screenX, screenY, cellSize);
             }
@@ -198,6 +239,11 @@ int main()
         glfwSwapBuffers(window);
     }
 
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
 }

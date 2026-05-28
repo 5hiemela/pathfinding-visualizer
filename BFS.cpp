@@ -21,14 +21,19 @@ bool foundEnd = false;
 // start BFS
 void startBFS(int sx, int sy)
 {
+    // Force the grid to clean out old paths before running again
+    resetSearchState();
+
+    // Clear out the search queue completely
     while (!bfsQueue.empty()) bfsQueue.pop();
+
+    // Clear local tracker tracking matrices
     memset(visited, false, sizeof(visited));
 
     foundEnd = false;
 
     bfsQueue.push({sx, sy});
     visited[sx][sy] = true;
-
     grid[sy][sx].visited = true;
 
     bfsStarted = true;
