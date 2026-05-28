@@ -79,6 +79,9 @@ int main()
 
     initializeGrid();
 
+    // This tracks the execution step delay.
+    float delay = 0.01f;
+
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -92,7 +95,7 @@ int main()
         ImGui::Text("GLFW + ImGui Visualizer");
         ImGui::Separator();
 
-        // Reset Path Search State
+        // Reset Path + Search nodes
         if (ImGui::Button("Reset Path / Search"))
         {
             bfsStarted = false;
@@ -114,6 +117,15 @@ int main()
             startX = -1; startY = -1;
             endX = -1; endY = -1;
         }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Text("Simulation Speed");
+
+        // This links the 'delay' variable straight to a visual slider.
+        // It chooses values between 0.001s and 0.200s.
+        ImGui::SliderFloat("Step Delay (s)", &delay, 0.001f, 0.2f, "%.3f s");
+
         ImGui::End();
 
         ImGui::Render();
@@ -132,11 +144,10 @@ int main()
         // Auto BFS timing loop
         static double lastStepTime = 0.0;
         double currentTime = glfwGetTime();
-        float bfsDelay = 0.01f;
 
         if (bfsStarted && !foundEnd)
         {
-            if (currentTime - lastStepTime >= bfsDelay)
+            if (currentTime - lastStepTime >= (double)delay)
             {
                 bfsStep();
                 lastStepTime = currentTime;
