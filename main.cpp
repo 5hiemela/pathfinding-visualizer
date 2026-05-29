@@ -9,6 +9,7 @@
 #include "Grid.h"
 #include "BFS.h"
 #include "DFS.h"
+#include "Maze/RecursiveBacktrack.h"
 
 void drawCell(float x, float y, float size)
 {
@@ -82,7 +83,8 @@ int main()
 
     float delay = 0.01f; // This tracks the execution step delay
     bool isPaused = false; // This tracks if the visualizer is frozen
-    int currentAlgorithm = 0; // 0 for BFS, 1 for DFS
+    int currentAlgorithm = 0; // For Pathfinding: 0 for BFS, 1 for DFS
+    int currentMazeAlgorithm = 0; // For Maze Generation: 0 for RB
     bool isInstant = false; // Toggle for instant execution
 
     while (!glfwWindowShouldClose(window))
@@ -103,6 +105,7 @@ int main()
         {
             bfsStarted = false;
             dfsStarted = false;
+            mazeGenerationStarted = false;
             foundEnd = false;
             resetSearchState();
         }
@@ -112,6 +115,7 @@ int main()
         {
             bfsStarted = false;
             dfsStarted = false;
+            mazeGenerationStarted = false;
             foundEnd = false;
             resetSearchState();
             clearAllWalls();
@@ -127,10 +131,10 @@ int main()
         ImGui::Separator();
         ImGui::Text("Simulation Controls");
 
-        // Only show the Pause/Resume button if an algorithm is running
-        if ((bfsStarted || dfsStarted) && !foundEnd)
+        // Only show the Pause/Resume button if an algorithm or maze is running
+        // Maze generation doesn't use foundEND, so it's handled separately
+        if (((bfsStarted || dfsStarted) && !foundEnd) || mazeGenerationStarted)
         {
-            // If algorithm is currently paused, show a "Resume" button
             if (isPaused)
             {
                 if (ImGui::Button("Resume Simulation"))
@@ -138,7 +142,6 @@ int main()
                     isPaused = false;
                 }
             }
-            // If algorithm is running, show a "Pause" button
             else
             {
                 if (ImGui::Button("Pause Simulation"))
@@ -149,7 +152,6 @@ int main()
         }
         else
         {
-            // Reset isPaused automatically if no simulation is active
             isPaused = false;
         }
 
@@ -176,29 +178,92 @@ int main()
             ImGui::Combo("##AlgoCombo", &currentAlgorithm, algorithms, IM_ARRAYSIZE(algorithms));
         }
 
-        ImGui::End();
+        if (ImGui::Button("Generate Path")) {
+            if (!mazeGenerationStarted && !bfsStarted && !dfsStarted)
+            {
+                if (startX != -1 && startY != -1 && endX != -1 && endY != -1)
+                {
+                    resetSearchState();
+                    foundEnd = false;
 
+                    if (currentAlgorithm == 0) {
+                        startBFS(startX, startY);
+                    } else if (currentAlgorithm == 1) {
+                        startDFS(startX, startY);
+                    }
+                }
+            }
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Text("Maze Generation");
+
+        const char* mazeAlgorithms[] = { "Recursive Backtracking" };
+
+        // Disable changing maze algorithm if any process is running
+        if (mazeGenerationStarted || bfsStarted || dfsStarted) {
+            ImGui::TextDisabled("%s", mazeAlgorithms[currentMazeAlgorithm]);
+        } else {
+            ImGui::Combo("##MazeCombo", &currentMazeAlgorithm, mazeAlgorithms, IM_ARRAYSIZE(mazeAlgorithms));
+        }
+
+        if (ImGui::Button("Generate Maze"))
+        {
+            if (!bfsStarted && !dfsStarted && !mazeGenerationStarted)
+            {
+                resetSearchState();
+                clearAllWalls();
+
+                startX = 1;
+                startY = 1;
+                grid[startY][startX].isStart = true;
+
+                // Clear old destination since the maze layout will completely change
+                if (endX != -1 && endY != -1) {
+                    grid[endY][endX].isEnd = false;
+                    endX = -1;
+                    endY = -1;
+                }
+
+                if (currentMazeAlgorithm == 0)
+                {
+                    initRecursiveBacktrack(startX, startY);
+                }
+
+                mazeGenerationStarted = true;
+            }
+        }
+
+        ImGui::End();
         ImGui::Render();
 
-        // Space key starts the BFS algorithm
+        // Space key starts the pathfinding algorithm
         static bool spacePressedLastFrame = false;
         bool spacePressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
 
         if (spacePressed && !spacePressedLastFrame)
         {
-            if (startX != -1 && startY != -1)
+            // Only start pathfinding if a maze isn't currently generating,
+            // pathfinding isn't already running, and both start/end nodes exist
+            if (!mazeGenerationStarted && !bfsStarted && !dfsStarted)
             {
-                // Check which algorithm is selected in the dropdown
-                if (currentAlgorithm == 0) {
-                    startBFS(startX, startY);
-                } else if (currentAlgorithm == 1) {
-                    startDFS(startX, startY);
+                if (startX != -1 && startY != -1 && endX != -1 && endY != -1) {
+                    // Reset previous paths/visited, but keep walls intact
+                    resetSearchState();
+                    foundEnd = false;
+
+                    if (currentAlgorithm == 0) {
+                        startBFS(startX, startY);
+                    } else if (currentAlgorithm == 1) {
+                        startDFS(startX, startY);
+                    }
                 }
             }
         }
         spacePressedLastFrame = spacePressed;
 
-        // Algorithm timing loop
+        // Pathfinding Algorithm Timing Engine
         static double lastStepTime = 0.0;
         double currentTime = glfwGetTime();
 
@@ -225,6 +290,41 @@ int main()
                         bfsStep();
                     } else if (currentAlgorithm == 1) {
                         dfsStep();
+                    }
+                    lastStepTime = currentTime;
+                }
+            }
+        }
+
+        // Maze Generation Timing Engine
+        if (mazeGenerationStarted)
+        {
+            if (isInstant)
+            {
+                // Loop repeatedly in a single frame until the active algorithm returns true
+                bool mazeDone = false;
+                while (!mazeDone)
+                {
+                    if (currentMazeAlgorithm == 0) {
+                        mazeDone = recursiveBacktrackStep();
+                    }
+                }
+                mazeGenerationStarted = false;
+            }
+            else if (!isPaused)
+            {
+                // Frame-by-frame delay timer
+                if (currentTime - lastStepTime >= (double)delay)
+                {
+                    bool mazeDone = false;
+
+                    if (currentMazeAlgorithm == 0) {
+                        mazeDone = recursiveBacktrackStep();
+                    }
+
+                    if (mazeDone)
+                    {
+                        mazeGenerationStarted = false;
                     }
                     lastStepTime = currentTime;
                 }

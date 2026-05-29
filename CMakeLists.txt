@@ -23,6 +23,8 @@ add_executable(PathfindingVisualizer
         BFS.cpp
         DFS.h
         DFS.cpp
+        Maze/RecursiveBacktrack.h
+        Maze/RecursiveBacktrack.cpp
 )
 
 target_include_directories(PathfindingVisualizer PRIVATE
