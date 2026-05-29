@@ -79,8 +79,8 @@ int main()
 
     initializeGrid();
 
-    // This tracks the execution step delay.
-    float delay = 0.01f;
+    float delay = 0.01f; // This tracks the execution step delay
+    bool isPaused = false; // This tracks if the visualizer is frozen
 
     while (!glfwWindowShouldClose(window))
     {
@@ -120,6 +120,36 @@ int main()
 
         ImGui::Spacing();
         ImGui::Separator();
+        ImGui::Text("Simulation Controls");
+
+        // Only show the Pause/Resume button if an algorithm is running
+        if (bfsStarted && !foundEnd)
+        {
+            // If we are currently paused, show a "Resume" button
+            if (isPaused)
+            {
+                if (ImGui::Button("Resume Simulation"))
+                {
+                    isPaused = false;
+                }
+            }
+            // If we are running, show a "Pause" button
+            else
+            {
+                if (ImGui::Button("Pause Simulation"))
+                {
+                    isPaused = true;
+                }
+            }
+        }
+        else
+        {
+            // Reset isPaused automatically if no simulation is active
+            isPaused = false;
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
         ImGui::Text("Simulation Speed");
 
         // This links the 'delay' variable straight to a visual slider.
@@ -145,7 +175,7 @@ int main()
         static double lastStepTime = 0.0;
         double currentTime = glfwGetTime();
 
-        if (bfsStarted && !foundEnd)
+        if (bfsStarted && !foundEnd && !isPaused)
         {
             if (currentTime - lastStepTime >= (double)delay)
             {
