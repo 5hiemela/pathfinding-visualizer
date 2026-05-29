@@ -2,7 +2,7 @@
 
 void startBFS(int sx, int sy);
 void bfsStep();
-void buildPath(int ex, int ey);
+void buildBFSPath(int ex, int ey);
 
 extern bool bfsStarted;
 extern bool foundEnd;

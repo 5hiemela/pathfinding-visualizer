@@ -76,7 +76,7 @@ void bfsStep()
 }
 
 // build shortest path
-void buildPath(int ex, int ey)
+void buildBFSPath(int ex, int ey)
 {
     int x = ex;
     int y = ey;

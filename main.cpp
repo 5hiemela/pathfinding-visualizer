@@ -8,6 +8,7 @@
 #include "Cell.h"
 #include "Grid.h"
 #include "BFS.h"
+#include "DFS.h"
 
 void drawCell(float x, float y, float size)
 {
@@ -81,6 +82,7 @@ int main()
 
     float delay = 0.01f; // This tracks the execution step delay
     bool isPaused = false; // This tracks if the visualizer is frozen
+    int currentAlgorithm = 0; // 0 for BFS, 1 for DFS
 
     while (!glfwWindowShouldClose(window))
     {
@@ -99,6 +101,7 @@ int main()
         if (ImGui::Button("Reset Path / Search"))
         {
             bfsStarted = false;
+            dfsStarted = false;
             foundEnd = false;
             resetSearchState();
         }
@@ -107,6 +110,7 @@ int main()
         if (ImGui::Button("Clear Entire Grid"))
         {
             bfsStarted = false;
+            dfsStarted = false;
             foundEnd = false;
             resetSearchState();
             clearAllWalls();
@@ -148,6 +152,17 @@ int main()
             isPaused = false;
         }
 
+        // Algorithm Selection
+        ImGui::Text("Select Algorithm:");
+        const char* algorithms[] = { "Breadth-First Search (BFS)", "Depth-First Search (DFS)" };
+
+        // Disable changing the algorithm while a simulation is actively running
+        if (bfsStarted || dfsStarted) {
+            ImGui::TextDisabled("%s", algorithms[currentAlgorithm]);
+        } else {
+            ImGui::Combo("##AlgoCombo", &currentAlgorithm, algorithms, IM_ARRAYSIZE(algorithms));
+        }
+
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Text("Simulation Speed");
@@ -167,7 +182,14 @@ int main()
         if (spacePressed && !spacePressedLastFrame)
         {
             if (startX != -1 && startY != -1)
-                startBFS(startX, startY);
+            {
+                // Check which algorithm is selected in the dropdown
+                if (currentAlgorithm == 0) {
+                    startBFS(startX, startY);
+                } else if (currentAlgorithm == 1) {
+                    startDFS(startX, startY);
+                }
+            }
         }
         spacePressedLastFrame = spacePressed;
 
@@ -175,11 +197,15 @@ int main()
         static double lastStepTime = 0.0;
         double currentTime = glfwGetTime();
 
-        if (bfsStarted && !foundEnd && !isPaused)
+        if ((bfsStarted || dfsStarted) && !foundEnd && !isPaused)
         {
             if (currentTime - lastStepTime >= (double)delay)
             {
-                bfsStep();
+                if (currentAlgorithm == 0) {
+                    bfsStep();
+                } else if (currentAlgorithm == 1) {
+                    dfsStep();
+                }
                 lastStepTime = currentTime;
             }
         }
@@ -187,7 +213,11 @@ int main()
         // Build path when done
         if (foundEnd && !grid[endY][endX].isPath)
         {
-            buildPath(endX, endY);
+            if (currentAlgorithm == 0) {
+                buildBFSPath(endX, endY);
+            } else if (currentAlgorithm == 1) {
+                buildDFSPath(endX, endY);
+            }
         }
 
         // Mouse Click Logic
