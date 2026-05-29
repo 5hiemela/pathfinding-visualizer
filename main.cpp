@@ -83,6 +83,7 @@ int main()
     float delay = 0.01f; // This tracks the execution step delay
     bool isPaused = false; // This tracks if the visualizer is frozen
     int currentAlgorithm = 0; // 0 for BFS, 1 for DFS
+    bool isInstant = false; // Toggle for instant execution
 
     while (!glfwWindowShouldClose(window))
     {
@@ -127,9 +128,9 @@ int main()
         ImGui::Text("Simulation Controls");
 
         // Only show the Pause/Resume button if an algorithm is running
-        if (bfsStarted && !foundEnd)
+        if ((bfsStarted || dfsStarted) && !foundEnd)
         {
-            // If we are currently paused, show a "Resume" button
+            // If algorithm is currently paused, show a "Resume" button
             if (isPaused)
             {
                 if (ImGui::Button("Resume Simulation"))
@@ -137,7 +138,7 @@ int main()
                     isPaused = false;
                 }
             }
-            // If we are running, show a "Pause" button
+            // If algorithm is running, show a "Pause" button
             else
             {
                 if (ImGui::Button("Pause Simulation"))
@@ -152,6 +153,18 @@ int main()
             isPaused = false;
         }
 
+        ImGui::Checkbox("Instant Run", &isInstant);
+
+        // Gray out the speed slider if Instant Run is active
+        if (isInstant) {
+            ImGui::TextDisabled("Speed Slider (Disabled in Instant Mode)");
+        } else {
+            ImGui::SliderFloat("Step Delay (s)", &delay, 0.001f, 0.2f, "%.3f s");
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+
         // Algorithm Selection
         ImGui::Text("Select Algorithm:");
         const char* algorithms[] = { "Breadth-First Search (BFS)", "Depth-First Search (DFS)" };
@@ -162,14 +175,6 @@ int main()
         } else {
             ImGui::Combo("##AlgoCombo", &currentAlgorithm, algorithms, IM_ARRAYSIZE(algorithms));
         }
-
-        ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Text("Simulation Speed");
-
-        // This links the 'delay' variable straight to a visual slider.
-        // It chooses values between 0.001s and 0.200s.
-        ImGui::SliderFloat("Step Delay (s)", &delay, 0.001f, 0.2f, "%.3f s");
 
         ImGui::End();
 
@@ -193,20 +198,36 @@ int main()
         }
         spacePressedLastFrame = spacePressed;
 
-        // Auto BFS timing loop
+        // Algorithm timing loop
         static double lastStepTime = 0.0;
         double currentTime = glfwGetTime();
 
-        if ((bfsStarted || dfsStarted) && !foundEnd && !isPaused)
+        if ((bfsStarted || dfsStarted) && !foundEnd)
         {
-            if (currentTime - lastStepTime >= (double)delay)
+            if (isInstant)
             {
-                if (currentAlgorithm == 0) {
-                    bfsStep();
-                } else if (currentAlgorithm == 1) {
-                    dfsStep();
+                // Loop repeatedly in a single frame until it hits a wall or finds the end
+                while ((bfsStarted || dfsStarted) && !foundEnd)
+                {
+                    if (currentAlgorithm == 0) {
+                        bfsStep();
+                    } else if (currentAlgorithm == 1) {
+                        dfsStep();
+                    }
                 }
-                lastStepTime = currentTime;
+            }
+            else if (!isPaused)
+            {
+                // Frame-by-frame delay timer
+                if (currentTime - lastStepTime >= (double)delay)
+                {
+                    if (currentAlgorithm == 0) {
+                        bfsStep();
+                    } else if (currentAlgorithm == 1) {
+                        dfsStep();
+                    }
+                    lastStepTime = currentTime;
+                }
             }
         }
 
