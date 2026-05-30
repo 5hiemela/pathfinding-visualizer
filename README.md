@@ -13,7 +13,7 @@ This project visualizes classic graph algorithms and maze generation techniques 
 - [ ] Bidirectional Search
 
 ### Maze Generation
-- [ ] Recursive Backtracking
+- [X] Recursive Backtracking
 - [ ] Prim’s Algorithm
 - [ ] Kruskal’s Algorithm
 
