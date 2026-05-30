@@ -172,7 +172,7 @@ int main()
         const char* algorithms[] = { "Breadth-First Search (BFS)", "Depth-First Search (DFS)" };
 
         // Disable changing the algorithm while a simulation is actively running
-        if (bfsStarted || dfsStarted) {
+        if (bfsStarted || dfsStarted || mazeGenerationStarted) {
             ImGui::TextDisabled("%s", algorithms[currentAlgorithm]);
         } else {
             ImGui::Combo("##AlgoCombo", &currentAlgorithm, algorithms, IM_ARRAYSIZE(algorithms));
@@ -212,24 +212,42 @@ int main()
         {
             if (!bfsStarted && !dfsStarted && !mazeGenerationStarted)
             {
+                // Reset pathfinding visuals
                 resetSearchState();
-                clearAllWalls();
 
-                startX = 1;
-                startY = 1;
-                grid[startY][startX].isStart = true;
-
-                // Clear old destination since the maze layout will completely change
-                if (endX != -1 && endY != -1) {
-                    grid[endY][endX].isEnd = false;
-                    endX = -1;
-                    endY = -1;
+                // BUG FIX: Wipe the grid completely clean of ALL walls and old node flags
+                for (int y = 0; y < GRID_HEIGHT; y++) {
+                    for (int x = 0; x < GRID_WIDTH; x++) {
+                        grid[y][x].isWall = false;
+                        grid[y][x].isStart = false; // Clear old start node on the grid cells
+                        grid[y][x].isEnd = false;   // Clear old end node on the grid cells
+                    }
                 }
 
+                // Keep our actual tracking coordinates, or default if missing
+                if (startX == -1 || startY == -1) {
+                    startX = 1;
+                    startY = 1;
+                }
+
+                // Align to odd coordinates for the maze math
+                if (startX % 2 == 0) startX++;
+                if (startY % 2 == 0) startY++;
+
+                // Reinforce the start node state safely on the grid
+                grid[startY][startX].isStart = true;
+
+                // Clear the end node coordinates entirely since the maze changes everything
+                endX = -1;
+                endY = -1;
+
+                // Generates whichever algorithm is selected
                 if (currentMazeAlgorithm == 0)
                 {
                     initRecursiveBacktrack(startX, startY);
                 }
+                // Future algorithms will be here:
+                // else if (currentMazeAlgorithm == 1) { initPrims(startX, startY); }
 
                 mazeGenerationStarted = true;
             }
@@ -309,6 +327,10 @@ int main()
                         mazeDone = recursiveBacktrackStep();
                     }
                 }
+
+                // BUG 2 FIX: Reinforce our start node on the grid properties when instant generation wraps up
+                grid[startY][startX].isStart = true;
+                grid[startY][startX].isWall = false;
                 mazeGenerationStarted = false;
             }
             else if (!isPaused)
@@ -324,6 +346,9 @@ int main()
 
                     if (mazeDone)
                     {
+                        // BUG 2 FIX: Reinforce our start node on the grid properties when frame-by-frame generation wraps up
+                        grid[startY][startX].isStart = true;
+                        grid[startY][startX].isWall = false;
                         mazeGenerationStarted = false;
                     }
                     lastStepTime = currentTime;
@@ -346,47 +371,57 @@ int main()
 
         if (!io.WantCaptureMouse)
         {
-            Cell c = getCellFromMouse(window);
-            int x = c.x;
-            int y = c.y;
-
-            if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT)
+            // BUG 3 FIX: Wrap mouse inputs completely. If an algorithm or maze is active, mouse modifications are strictly locked out
+            if (!bfsStarted && !dfsStarted && !mazeGenerationStarted)
             {
-                // Checks if Shift key is being held down
-                bool shiftPressed = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ||
-                                     glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
+                Cell c = getCellFromMouse(window);
+                int x = c.x;
+                int y = c.y;
 
-                // Left Click: Place Wall node
-                if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+                if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT)
                 {
-                    if (!grid[y][x].isStart && !grid[y][x].isEnd) {
-                        if (shiftPressed) {
-                            grid[y][x].isWall = false;  // Shift + Left Click clears walls
-                        } else {
-                            grid[y][x].isWall = true;   // Hold Left Click paints walls
+                    // Checks if Shift key is being held down
+                    bool shiftPressed = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ||
+                                         glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
+
+                    // Left Click: Place Wall node
+                    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+                    {
+                        if (!grid[y][x].isStart && !grid[y][x].isEnd) {
+                            if (shiftPressed) {
+                                grid[y][x].isWall = false;  // Shift + Left Click clears walls
+                            } else {
+                                grid[y][x].isWall = true;   // Hold Left Click paints walls
+                            }
                         }
                     }
-                }
 
-                // Right Click: Place Start node
-                if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
-                {
-                    if (!grid[y][x].isEnd) {
-                        if (startX != -1) grid[startY][startX].isStart = false;
-                        startX = x; startY = y;
-                        grid[y][x].isStart = true;
-                        grid[y][x].isWall = false; // Clear wall if placed over one
+                    // Right Click: Place Start node
+                    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+                    {
+                        if (!grid[y][x].isEnd) {
+                            // BUG 2 FIX: Check both the grid AND track our index variables cleanly to prevent ghost nodes
+                            if (startX != -1 && startY != -1) {
+                                grid[startY][startX].isStart = false;
+                            }
+                            startX = x; startY = y;
+                            grid[y][x].isStart = true;
+                            grid[y][x].isWall = false; // Clear wall if placed over one
+                        }
                     }
-                }
 
-                // Middle Click: Place End node
-                if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
-                {
-                    if (!grid[y][x].isStart) {
-                        if (endX != -1) grid[endY][endX].isEnd = false;
-                        endX = x; endY = y;
-                        grid[y][x].isEnd = true;
-                        grid[y][x].isWall = false; // Clear wall if placed over one
+                    // Middle Click: Place End node
+                    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
+                    {
+                        if (!grid[y][x].isStart) {
+                            // BUG 2 FIX: Check both the grid AND track our index variables cleanly to prevent ghost nodes
+                            if (endX != -1 && endY != -1) {
+                                grid[endY][endX].isEnd = false;
+                            }
+                            endX = x; endY = y;
+                            grid[y][x].isEnd = true;
+                            grid[y][x].isWall = false; // Clear wall if placed over one
+                        }
                     }
                 }
             }

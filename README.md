@@ -7,7 +7,7 @@ This project visualizes classic graph algorithms and maze generation techniques 
 ## Algorithms
 ### Pathfinding
 - [X] Breadth-First Search (BFS)
-- [ ] Depth-First Search (DFS)
+- [X] Depth-First Search (DFS)
 - [ ] Dijkstra’s Algorithm
 - [ ] A* Search
 - [ ] Bidirectional Search
@@ -21,9 +21,9 @@ This project visualizes classic graph algorithms and maze generation techniques 
 - [X] Real-time step-by-step visualization
 - [X] Interactive grid system
 - [X] Adjustable execution speed
-- [ ] Pause / Resume controls
+- [X] Pause / Resume controls
 - [ ] Instant run / Live edit
-- [ ] Algorithm selection UI
+- [X] Algorithm selection UI
 - [ ] Performance timing display
 - [ ] Weighted nodes
 
