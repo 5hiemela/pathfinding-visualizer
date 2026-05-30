@@ -1,5 +1,5 @@
 #include "RecursiveBacktrack.h"
-#include "../Grid.h"
+#include "../Grid/Grid.h"
 #include <stack>
 #include <algorithm> // For std::shuffle
 #include <random>    // For std::mt19937

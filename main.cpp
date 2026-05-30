@@ -5,10 +5,10 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 
-#include "Cell.h"
-#include "Grid.h"
-#include "BFS.h"
-#include "DFS.h"
+#include "Grid/Cell.h"
+#include "Grid/Grid.h"
+#include "Pathfinding/BFS.h"
+#include "Pathfinding/DFS.h"
 #include "Maze/RecursiveBacktrack.h"
 
 void drawCell(float x, float y, float size)
@@ -172,7 +172,7 @@ int main()
         const char* algorithms[] = { "Breadth-First Search (BFS)", "Depth-First Search (DFS)" };
 
         // Disable changing the algorithm while a simulation is actively running
-        if (bfsStarted || dfsStarted || mazeGenerationStarted) {
+        if (((bfsStarted || dfsStarted) && !foundEnd) || mazeGenerationStarted) {
             ImGui::TextDisabled("%s", algorithms[currentAlgorithm]);
         } else {
             ImGui::Combo("##AlgoCombo", &currentAlgorithm, algorithms, IM_ARRAYSIZE(algorithms));
@@ -202,7 +202,7 @@ int main()
         const char* mazeAlgorithms[] = { "Recursive Backtracking" };
 
         // Disable changing maze algorithm if any process is running
-        if (mazeGenerationStarted || bfsStarted || dfsStarted) {
+        if (mazeGenerationStarted || ((bfsStarted || dfsStarted) && !foundEnd)) {
             ImGui::TextDisabled("%s", mazeAlgorithms[currentMazeAlgorithm]);
         } else {
             ImGui::Combo("##MazeCombo", &currentMazeAlgorithm, mazeAlgorithms, IM_ARRAYSIZE(mazeAlgorithms));
@@ -361,8 +361,10 @@ int main()
         {
             if (currentAlgorithm == 0) {
                 buildBFSPath(endX, endY);
+                bfsStarted = false;
             } else if (currentAlgorithm == 1) {
                 buildDFSPath(endX, endY);
+                dfsStarted = false;
             }
         }
 

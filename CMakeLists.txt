@@ -16,13 +16,13 @@ add_executable(PathfindingVisualizer
 
         extern/imgui/backends/imgui_impl_glfw.cpp
         extern/imgui/backends/imgui_impl_opengl3.cpp
-        Cell.h
-        Grid.h
-        Grid.cpp
-        BFS.h
-        BFS.cpp
-        DFS.h
-        DFS.cpp
+        Grid/Cell.h
+        Grid/Grid.h
+        Grid/Grid.cpp
+        Pathfinding/BFS.h
+        Pathfinding/BFS.cpp
+        Pathfinding/DFS.h
+        Pathfinding/DFS.cpp
         Maze/RecursiveBacktrack.h
         Maze/RecursiveBacktrack.cpp
 )
