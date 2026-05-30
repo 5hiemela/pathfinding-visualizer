@@ -5,10 +5,11 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 
-#include "Cell.h"
-#include "Grid.h"
-#include "BFS.h"
-#include "DFS.h"
+#include "Grid/Cell.h"
+#include "Grid/Grid.h"
+#include "Pathfinding/BFS.h"
+#include "Pathfinding/DFS.h"
+#include "Maze/RecursiveBacktrack.h"
 
 void drawCell(float x, float y, float size)
 {
@@ -82,7 +83,8 @@ int main()
 
     float delay = 0.01f; // This tracks the execution step delay
     bool isPaused = false; // This tracks if the visualizer is frozen
-    int currentAlgorithm = 0; // 0 for BFS, 1 for DFS
+    int currentAlgorithm = 0; // For Pathfinding: 0 for BFS, 1 for DFS
+    int currentMazeAlgorithm = 0; // For Maze Generation: 0 for RB
     bool isInstant = false; // Toggle for instant execution
 
     while (!glfwWindowShouldClose(window))
@@ -103,6 +105,7 @@ int main()
         {
             bfsStarted = false;
             dfsStarted = false;
+            mazeGenerationStarted = false;
             foundEnd = false;
             resetSearchState();
         }
@@ -112,6 +115,7 @@ int main()
         {
             bfsStarted = false;
             dfsStarted = false;
+            mazeGenerationStarted = false;
             foundEnd = false;
             resetSearchState();
             clearAllWalls();
@@ -127,10 +131,10 @@ int main()
         ImGui::Separator();
         ImGui::Text("Simulation Controls");
 
-        // Only show the Pause/Resume button if an algorithm is running
-        if ((bfsStarted || dfsStarted) && !foundEnd)
+        // Only show the Pause/Resume button if an algorithm or maze is running
+        // Maze generation doesn't use foundEND, so it's handled separately
+        if (((bfsStarted || dfsStarted) && !foundEnd) || mazeGenerationStarted)
         {
-            // If algorithm is currently paused, show a "Resume" button
             if (isPaused)
             {
                 if (ImGui::Button("Resume Simulation"))
@@ -138,7 +142,6 @@ int main()
                     isPaused = false;
                 }
             }
-            // If algorithm is running, show a "Pause" button
             else
             {
                 if (ImGui::Button("Pause Simulation"))
@@ -149,7 +152,6 @@ int main()
         }
         else
         {
-            // Reset isPaused automatically if no simulation is active
             isPaused = false;
         }
 
@@ -170,35 +172,116 @@ int main()
         const char* algorithms[] = { "Breadth-First Search (BFS)", "Depth-First Search (DFS)" };
 
         // Disable changing the algorithm while a simulation is actively running
-        if (bfsStarted || dfsStarted) {
+        if (((bfsStarted || dfsStarted) && !foundEnd) || mazeGenerationStarted) {
             ImGui::TextDisabled("%s", algorithms[currentAlgorithm]);
         } else {
             ImGui::Combo("##AlgoCombo", &currentAlgorithm, algorithms, IM_ARRAYSIZE(algorithms));
         }
 
-        ImGui::End();
+        if (ImGui::Button("Generate Path")) {
+            if (!mazeGenerationStarted && !bfsStarted && !dfsStarted)
+            {
+                if (startX != -1 && startY != -1 && endX != -1 && endY != -1)
+                {
+                    resetSearchState();
+                    foundEnd = false;
 
+                    if (currentAlgorithm == 0) {
+                        startBFS(startX, startY);
+                    } else if (currentAlgorithm == 1) {
+                        startDFS(startX, startY);
+                    }
+                }
+            }
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Text("Maze Generation");
+
+        const char* mazeAlgorithms[] = { "Recursive Backtracking" };
+
+        // Disable changing maze algorithm if any process is running
+        if (mazeGenerationStarted || ((bfsStarted || dfsStarted) && !foundEnd)) {
+            ImGui::TextDisabled("%s", mazeAlgorithms[currentMazeAlgorithm]);
+        } else {
+            ImGui::Combo("##MazeCombo", &currentMazeAlgorithm, mazeAlgorithms, IM_ARRAYSIZE(mazeAlgorithms));
+        }
+
+        if (ImGui::Button("Generate Maze"))
+        {
+            if (!bfsStarted && !dfsStarted && !mazeGenerationStarted)
+            {
+                // Reset pathfinding visuals
+                resetSearchState();
+
+                // BUG FIX: Wipe the grid completely clean of ALL walls and old node flags
+                for (int y = 0; y < GRID_HEIGHT; y++) {
+                    for (int x = 0; x < GRID_WIDTH; x++) {
+                        grid[y][x].isWall = false;
+                        grid[y][x].isStart = false; // Clear old start node on the grid cells
+                        grid[y][x].isEnd = false;   // Clear old end node on the grid cells
+                    }
+                }
+
+                // Keep our actual tracking coordinates, or default if missing
+                if (startX == -1 || startY == -1) {
+                    startX = 1;
+                    startY = 1;
+                }
+
+                // Align to odd coordinates for the maze math
+                if (startX % 2 == 0) startX++;
+                if (startY % 2 == 0) startY++;
+
+                // Reinforce the start node state safely on the grid
+                grid[startY][startX].isStart = true;
+
+                // Clear the end node coordinates entirely since the maze changes everything
+                endX = -1;
+                endY = -1;
+
+                // Generates whichever algorithm is selected
+                if (currentMazeAlgorithm == 0)
+                {
+                    initRecursiveBacktrack(startX, startY);
+                }
+                // Future algorithms will be here:
+                // else if (currentMazeAlgorithm == 1) { initPrims(startX, startY); }
+
+                mazeGenerationStarted = true;
+            }
+        }
+
+        ImGui::End();
         ImGui::Render();
 
-        // Space key starts the BFS algorithm
+        // Space key starts the pathfinding algorithm
         static bool spacePressedLastFrame = false;
         bool spacePressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
 
         if (spacePressed && !spacePressedLastFrame)
         {
-            if (startX != -1 && startY != -1)
+            // Only start pathfinding if a maze isn't currently generating,
+            // pathfinding isn't already running, and both start/end nodes exist
+            if (!mazeGenerationStarted && !bfsStarted && !dfsStarted)
             {
-                // Check which algorithm is selected in the dropdown
-                if (currentAlgorithm == 0) {
-                    startBFS(startX, startY);
-                } else if (currentAlgorithm == 1) {
-                    startDFS(startX, startY);
+                if (startX != -1 && startY != -1 && endX != -1 && endY != -1) {
+                    // Reset previous paths/visited, but keep walls intact
+                    resetSearchState();
+                    foundEnd = false;
+
+                    if (currentAlgorithm == 0) {
+                        startBFS(startX, startY);
+                    } else if (currentAlgorithm == 1) {
+                        startDFS(startX, startY);
+                    }
                 }
             }
         }
         spacePressedLastFrame = spacePressed;
 
-        // Algorithm timing loop
+        // Pathfinding Algorithm Timing Engine
         static double lastStepTime = 0.0;
         double currentTime = glfwGetTime();
 
@@ -231,13 +314,57 @@ int main()
             }
         }
 
+        // Maze Generation Timing Engine
+        if (mazeGenerationStarted)
+        {
+            if (isInstant)
+            {
+                // Loop repeatedly in a single frame until the active algorithm returns true
+                bool mazeDone = false;
+                while (!mazeDone)
+                {
+                    if (currentMazeAlgorithm == 0) {
+                        mazeDone = recursiveBacktrackStep();
+                    }
+                }
+
+                // BUG 2 FIX: Reinforce our start node on the grid properties when instant generation wraps up
+                grid[startY][startX].isStart = true;
+                grid[startY][startX].isWall = false;
+                mazeGenerationStarted = false;
+            }
+            else if (!isPaused)
+            {
+                // Frame-by-frame delay timer
+                if (currentTime - lastStepTime >= (double)delay)
+                {
+                    bool mazeDone = false;
+
+                    if (currentMazeAlgorithm == 0) {
+                        mazeDone = recursiveBacktrackStep();
+                    }
+
+                    if (mazeDone)
+                    {
+                        // BUG 2 FIX: Reinforce our start node on the grid properties when frame-by-frame generation wraps up
+                        grid[startY][startX].isStart = true;
+                        grid[startY][startX].isWall = false;
+                        mazeGenerationStarted = false;
+                    }
+                    lastStepTime = currentTime;
+                }
+            }
+        }
+
         // Build path when done
         if (foundEnd && !grid[endY][endX].isPath)
         {
             if (currentAlgorithm == 0) {
                 buildBFSPath(endX, endY);
+                bfsStarted = false;
             } else if (currentAlgorithm == 1) {
                 buildDFSPath(endX, endY);
+                dfsStarted = false;
             }
         }
 
@@ -246,47 +373,57 @@ int main()
 
         if (!io.WantCaptureMouse)
         {
-            Cell c = getCellFromMouse(window);
-            int x = c.x;
-            int y = c.y;
-
-            if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT)
+            // BUG 3 FIX: Wrap mouse inputs completely. If an algorithm or maze is active, mouse modifications are strictly locked out
+            if (!bfsStarted && !dfsStarted && !mazeGenerationStarted)
             {
-                // Checks if Shift key is being held down
-                bool shiftPressed = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ||
-                                     glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
+                Cell c = getCellFromMouse(window);
+                int x = c.x;
+                int y = c.y;
 
-                // Left Click: Place Wall node
-                if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+                if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT)
                 {
-                    if (!grid[y][x].isStart && !grid[y][x].isEnd) {
-                        if (shiftPressed) {
-                            grid[y][x].isWall = false;  // Shift + Left Click clears walls
-                        } else {
-                            grid[y][x].isWall = true;   // Hold Left Click paints walls
+                    // Checks if Shift key is being held down
+                    bool shiftPressed = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ||
+                                         glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
+
+                    // Left Click: Place Wall node
+                    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+                    {
+                        if (!grid[y][x].isStart && !grid[y][x].isEnd) {
+                            if (shiftPressed) {
+                                grid[y][x].isWall = false;  // Shift + Left Click clears walls
+                            } else {
+                                grid[y][x].isWall = true;   // Hold Left Click paints walls
+                            }
                         }
                     }
-                }
 
-                // Right Click: Place Start node
-                if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
-                {
-                    if (!grid[y][x].isEnd) {
-                        if (startX != -1) grid[startY][startX].isStart = false;
-                        startX = x; startY = y;
-                        grid[y][x].isStart = true;
-                        grid[y][x].isWall = false; // Clear wall if placed over one
+                    // Right Click: Place Start node
+                    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+                    {
+                        if (!grid[y][x].isEnd) {
+                            // BUG 2 FIX: Check both the grid AND track our index variables cleanly to prevent ghost nodes
+                            if (startX != -1 && startY != -1) {
+                                grid[startY][startX].isStart = false;
+                            }
+                            startX = x; startY = y;
+                            grid[y][x].isStart = true;
+                            grid[y][x].isWall = false; // Clear wall if placed over one
+                        }
                     }
-                }
 
-                // Middle Click: Place End node
-                if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
-                {
-                    if (!grid[y][x].isStart) {
-                        if (endX != -1) grid[endY][endX].isEnd = false;
-                        endX = x; endY = y;
-                        grid[y][x].isEnd = true;
-                        grid[y][x].isWall = false; // Clear wall if placed over one
+                    // Middle Click: Place End node
+                    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
+                    {
+                        if (!grid[y][x].isStart) {
+                            // BUG 2 FIX: Check both the grid AND track our index variables cleanly to prevent ghost nodes
+                            if (endX != -1 && endY != -1) {
+                                grid[endY][endX].isEnd = false;
+                            }
+                            endX = x; endY = y;
+                            grid[y][x].isEnd = true;
+                            grid[y][x].isWall = false; // Clear wall if placed over one
+                        }
                     }
                 }
             }

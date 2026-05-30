@@ -3,8 +3,8 @@
 #include <utility>
 
 #include "DFS.h"
-#include "Grid.h"
-#include "Cell.h"
+#include "../Grid/Grid.h"
+#include "../Grid/Cell.h"
 
 // Bring in the global coordinates defined in your main/grid system
 extern int startX;

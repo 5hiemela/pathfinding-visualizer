@@ -2,8 +2,8 @@
 #include <cstring>
 #include <utility>
 
-#include "Grid.h"
-#include "Cell.h"
+#include "../Grid/Grid.h"
+#include "../Grid/Cell.h"
 
 extern int startX;
 extern int startY;
