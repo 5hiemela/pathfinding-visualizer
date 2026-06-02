@@ -36,6 +36,11 @@ void clearAllWalls()
         for (int x = 0; x < GRID_WIDTH; x++)
         {
             grid[y][x].isWall = false;
+
+            // Reset terrain back to default unweighted state
+            grid[y][x].isSand = false;
+            grid[y][x].isMud = false;
+            grid[y][x].weight = 1;
         }
     }
 }

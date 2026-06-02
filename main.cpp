@@ -9,6 +9,7 @@
 #include "Grid/Grid.h"
 #include "Pathfinding/BFS.h"
 #include "Pathfinding/DFS.h"
+#include "Pathfinding/Dijkstra.h"
 #include "Maze/RecursiveBacktrack.h"
 
 void drawCell(float x, float y, float size)
@@ -62,6 +63,8 @@ Cell getCellFromMouse(GLFWwindow* window)
 int startX = -1, startY = -1;
 int endX = -1, endY = -1;
 
+int currentTool = 0; // 0: Wall, 1: Sand (Weight 3), 2: Mud (Weight 5)
+
 int main()
 {
     glfwInit();
@@ -100,11 +103,20 @@ int main()
         ImGui::Text("GLFW + ImGui Visualizer");
         ImGui::Separator();
 
+        // Tool Selector
+        ImGui::Text("Editing Tool:");
+        const char* tools[] = { "Wall (Infinity)", "Sand (Weight 3)", "Mud (Weight 5)" };
+        // Use currentTool variable to track selection
+        ImGui::Combo("##ToolCombo", &currentTool, tools, IM_ARRAYSIZE(tools));
+        ImGui::Spacing();
+        ImGui::Separator();
+
         // Reset Path + Search nodes
         if (ImGui::Button("Reset Path / Search"))
         {
             bfsStarted = false;
             dfsStarted = false;
+            dijkstraStarted = false;
             mazeGenerationStarted = false;
             foundEnd = false;
             resetSearchState();
@@ -133,7 +145,7 @@ int main()
 
         // Only show the Pause/Resume button if an algorithm or maze is running
         // Maze generation doesn't use foundEND, so it's handled separately
-        if (((bfsStarted || dfsStarted) && !foundEnd) || mazeGenerationStarted)
+        if (((bfsStarted || dfsStarted || dijkstraStarted) && !foundEnd) || mazeGenerationStarted)
         {
             if (isPaused)
             {
@@ -169,17 +181,17 @@ int main()
 
         // Algorithm Selection
         ImGui::Text("Select Algorithm:");
-        const char* algorithms[] = { "Breadth-First Search (BFS)", "Depth-First Search (DFS)" };
+        const char* algorithms[] = { "Breadth-First Search (BFS)", "Depth-First Search (DFS)", "Dijkstra's Algorithm" };
 
         // Disable changing the algorithm while a simulation is actively running
-        if (((bfsStarted || dfsStarted) && !foundEnd) || mazeGenerationStarted) {
+        if (((bfsStarted || dfsStarted || dijkstraStarted) && !foundEnd) || mazeGenerationStarted) {
             ImGui::TextDisabled("%s", algorithms[currentAlgorithm]);
         } else {
             ImGui::Combo("##AlgoCombo", &currentAlgorithm, algorithms, IM_ARRAYSIZE(algorithms));
         }
 
         if (ImGui::Button("Generate Path")) {
-            if (!mazeGenerationStarted && !bfsStarted && !dfsStarted)
+            if (!mazeGenerationStarted && !bfsStarted && !dfsStarted && !dijkstraStarted)
             {
                 if (startX != -1 && startY != -1 && endX != -1 && endY != -1)
                 {
@@ -190,6 +202,8 @@ int main()
                         startBFS(startX, startY);
                     } else if (currentAlgorithm == 1) {
                         startDFS(startX, startY);
+                    } else if (currentAlgorithm == 2) {
+                        startDijkstra(startX, startY);
                     }
                 }
             }
@@ -202,7 +216,7 @@ int main()
         const char* mazeAlgorithms[] = { "Recursive Backtracking" };
 
         // Disable changing maze algorithm if any process is running
-        if (mazeGenerationStarted || ((bfsStarted || dfsStarted) && !foundEnd)) {
+        if (mazeGenerationStarted || ((bfsStarted || dfsStarted || dijkstraStarted) && !foundEnd)) {
             ImGui::TextDisabled("%s", mazeAlgorithms[currentMazeAlgorithm]);
         } else {
             ImGui::Combo("##MazeCombo", &currentMazeAlgorithm, mazeAlgorithms, IM_ARRAYSIZE(mazeAlgorithms));
@@ -210,7 +224,7 @@ int main()
 
         if (ImGui::Button("Generate Maze"))
         {
-            if (!bfsStarted && !dfsStarted && !mazeGenerationStarted)
+            if (!bfsStarted && !dfsStarted && !dijkstraStarted && !mazeGenerationStarted)
             {
                 // Reset pathfinding visuals
                 resetSearchState();
@@ -264,7 +278,7 @@ int main()
         {
             // Only start pathfinding if a maze isn't currently generating,
             // pathfinding isn't already running, and both start/end nodes exist
-            if (!mazeGenerationStarted && !bfsStarted && !dfsStarted)
+            if (!mazeGenerationStarted && !bfsStarted && !dfsStarted && !dijkstraStarted)
             {
                 if (startX != -1 && startY != -1 && endX != -1 && endY != -1) {
                     // Reset previous paths/visited, but keep walls intact
@@ -275,6 +289,8 @@ int main()
                         startBFS(startX, startY);
                     } else if (currentAlgorithm == 1) {
                         startDFS(startX, startY);
+                    } else if (currentAlgorithm == 2) {
+                        startDijkstra(startX, startY);
                     }
                 }
             }
@@ -285,17 +301,19 @@ int main()
         static double lastStepTime = 0.0;
         double currentTime = glfwGetTime();
 
-        if ((bfsStarted || dfsStarted) && !foundEnd)
+        if ((bfsStarted || dfsStarted || dijkstraStarted) && !foundEnd)
         {
             if (isInstant)
             {
                 // Loop repeatedly in a single frame until it hits a wall or finds the end
-                while ((bfsStarted || dfsStarted) && !foundEnd)
+                while ((bfsStarted || dfsStarted || dijkstraStarted) && !foundEnd)
                 {
                     if (currentAlgorithm == 0) {
                         bfsStep();
                     } else if (currentAlgorithm == 1) {
                         dfsStep();
+                    } else if (currentAlgorithm == 2) {
+                        dijkstraStep();
                     }
                 }
             }
@@ -308,6 +326,8 @@ int main()
                         bfsStep();
                     } else if (currentAlgorithm == 1) {
                         dfsStep();
+                    } else if (currentAlgorithm == 2) {
+                        dijkstraStep();
                     }
                     lastStepTime = currentTime;
                 }
@@ -365,6 +385,9 @@ int main()
             } else if (currentAlgorithm == 1) {
                 buildDFSPath(endX, endY);
                 dfsStarted = false;
+            } else if (currentAlgorithm == 2) {
+                buildDijkstraPath(endX, endY);
+                dijkstraStarted = false;
             }
         }
 
@@ -387,13 +410,32 @@ int main()
                                          glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
 
                     // Left Click: Place Wall node
-                    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-                    {
+                    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
                         if (!grid[y][x].isStart && !grid[y][x].isEnd) {
                             if (shiftPressed) {
-                                grid[y][x].isWall = false;  // Shift + Left Click clears walls
+                                // Eraser logic
+                                grid[y][x].isWall = false;
+                                grid[y][x].isSand = false;
+                                grid[y][x].isMud = false;
+                                grid[y][x].weight = 1;
                             } else {
-                                grid[y][x].isWall = true;   // Hold Left Click paints walls
+                                // Painting logic based on selected tool
+                                if (currentTool == 0) { // Wall
+                                    grid[y][x].isWall = true;
+                                    grid[y][x].isSand = false;
+                                    grid[y][x].isMud = false;
+                                    grid[y][x].weight = 1; // Walls don't need weight math
+                                } else if (currentTool == 1) { // Sand
+                                    grid[y][x].isWall = false;
+                                    grid[y][x].isSand = true;
+                                    grid[y][x].isMud = false;
+                                    grid[y][x].weight = 3;
+                                } else if (currentTool == 2) { // Mud
+                                    grid[y][x].isWall = false;
+                                    grid[y][x].isSand = false;
+                                    grid[y][x].isMud = true;
+                                    grid[y][x].weight = 5;
+                                }
                             }
                         }
                     }
@@ -440,10 +482,8 @@ int main()
         float offsetX = -gridW / 2.0f;
         float offsetY =  gridH / 2.0f;
 
-        for (int y = 0; y < GRID_HEIGHT; y++)
-        {
-            for (int x = 0; x < GRID_WIDTH; x++)
-            {
+        for (int y = 0; y < GRID_HEIGHT; y++) {
+            for (int x = 0; x < GRID_WIDTH; x++) {
                 float screenX = offsetX + x * cellSize;
                 float screenY = offsetY - y * cellSize;
 
@@ -457,6 +497,10 @@ int main()
                     glColor3f(0.2f, 0.4f, 1.0f); // Blue
                 else if (grid[y][x].isWall)
                     glColor3f(0.05f, 0.05f, 0.05f); // Black
+                else if (grid[y][x].isMud)
+                    glColor3f(0.35f, 0.25f, 0.15f); // Brown (Mud)
+                else if (grid[y][x].isSand)
+                    glColor3f(0.76f, 0.70f, 0.50f); // Tan (Sand)
                 else
                     glColor3f(0.9f, 0.9f, 0.9f); // Empty
 
