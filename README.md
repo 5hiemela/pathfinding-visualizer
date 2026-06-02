@@ -8,8 +8,8 @@ This project visualizes classic graph algorithms and maze generation techniques 
 ### Pathfinding
 - [X] Breadth-First Search (BFS)
 - [X] Depth-First Search (DFS)
-- [ ] Dijkstra’s Algorithm
-- [ ] A* Search
+- [X] Dijkstra’s Algorithm
+- [X] A* Search
 - [ ] Bidirectional Search
 
 ### Maze Generation
@@ -25,7 +25,7 @@ This project visualizes classic graph algorithms and maze generation techniques 
 - [ ] Instant run / Live edit
 - [X] Algorithm selection UI
 - [ ] Performance timing display
-- [ ] Weighted nodes
+- [X] Weighted nodes
 
 ## Tech Stack
 - C++
