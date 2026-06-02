@@ -29,6 +29,8 @@ add_executable(PathfindingVisualizer
         Pathfinding/Dijkstra.cpp
         Pathfinding/AStar.cpp
         Pathfinding/AStar.h
+        Pathfinding/Bidirectional.cpp
+        Pathfinding/Bidirectional.h
 )
 
 target_include_directories(PathfindingVisualizer PRIVATE
