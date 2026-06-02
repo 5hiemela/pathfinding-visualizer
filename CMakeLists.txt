@@ -27,6 +27,8 @@ add_executable(PathfindingVisualizer
         Maze/RecursiveBacktrack.cpp
         Pathfinding/Dijkstra.h
         Pathfinding/Dijkstra.cpp
+        Pathfinding/AStar.cpp
+        Pathfinding/AStar.h
 )
 
 target_include_directories(PathfindingVisualizer PRIVATE

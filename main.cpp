@@ -10,6 +10,7 @@
 #include "Pathfinding/BFS.h"
 #include "Pathfinding/DFS.h"
 #include "Pathfinding/Dijkstra.h"
+#include "Pathfinding/AStar.h"
 #include "Maze/RecursiveBacktrack.h"
 
 void drawCell(float x, float y, float size)
@@ -117,6 +118,7 @@ int main()
             bfsStarted = false;
             dfsStarted = false;
             dijkstraStarted = false;
+            astarStarted = false;
             mazeGenerationStarted = false;
             foundEnd = false;
             resetSearchState();
@@ -127,6 +129,8 @@ int main()
         {
             bfsStarted = false;
             dfsStarted = false;
+            dijkstraStarted = false;
+            astarStarted = false;
             mazeGenerationStarted = false;
             foundEnd = false;
             resetSearchState();
@@ -145,7 +149,7 @@ int main()
 
         // Only show the Pause/Resume button if an algorithm or maze is running
         // Maze generation doesn't use foundEND, so it's handled separately
-        if (((bfsStarted || dfsStarted || dijkstraStarted) && !foundEnd) || mazeGenerationStarted)
+        if (((bfsStarted || dfsStarted || dijkstraStarted || astarStarted) && !foundEnd) || mazeGenerationStarted)
         {
             if (isPaused)
             {
@@ -181,17 +185,17 @@ int main()
 
         // Algorithm Selection
         ImGui::Text("Select Algorithm:");
-        const char* algorithms[] = { "Breadth-First Search (BFS)", "Depth-First Search (DFS)", "Dijkstra's Algorithm" };
+        const char* algorithms[] = { "Breadth-First Search (BFS)", "Depth-First Search (DFS)", "Dijkstra's Algorithm", "A* Search" };
 
         // Disable changing the algorithm while a simulation is actively running
-        if (((bfsStarted || dfsStarted || dijkstraStarted) && !foundEnd) || mazeGenerationStarted) {
+        if (((bfsStarted || dfsStarted || dijkstraStarted || astarStarted) && !foundEnd) || mazeGenerationStarted) {
             ImGui::TextDisabled("%s", algorithms[currentAlgorithm]);
         } else {
             ImGui::Combo("##AlgoCombo", &currentAlgorithm, algorithms, IM_ARRAYSIZE(algorithms));
         }
 
         if (ImGui::Button("Generate Path")) {
-            if (!mazeGenerationStarted && !bfsStarted && !dfsStarted && !dijkstraStarted)
+            if (!mazeGenerationStarted && !bfsStarted && !dfsStarted && !dijkstraStarted && !astarStarted)
             {
                 if (startX != -1 && startY != -1 && endX != -1 && endY != -1)
                 {
@@ -204,6 +208,8 @@ int main()
                         startDFS(startX, startY);
                     } else if (currentAlgorithm == 2) {
                         startDijkstra(startX, startY);
+                    } else if (currentAlgorithm == 3) {
+                        startAStar(startX, startY);
                     }
                 }
             }
@@ -216,7 +222,7 @@ int main()
         const char* mazeAlgorithms[] = { "Recursive Backtracking" };
 
         // Disable changing maze algorithm if any process is running
-        if (mazeGenerationStarted || ((bfsStarted || dfsStarted || dijkstraStarted) && !foundEnd)) {
+        if (mazeGenerationStarted || ((bfsStarted || dfsStarted || dijkstraStarted || astarStarted) && !foundEnd)) {
             ImGui::TextDisabled("%s", mazeAlgorithms[currentMazeAlgorithm]);
         } else {
             ImGui::Combo("##MazeCombo", &currentMazeAlgorithm, mazeAlgorithms, IM_ARRAYSIZE(mazeAlgorithms));
@@ -224,7 +230,7 @@ int main()
 
         if (ImGui::Button("Generate Maze"))
         {
-            if (!bfsStarted && !dfsStarted && !dijkstraStarted && !mazeGenerationStarted)
+            if (!bfsStarted && !dfsStarted && !dijkstraStarted && !astarStarted && !mazeGenerationStarted)
             {
                 // Reset pathfinding visuals
                 resetSearchState();
@@ -278,7 +284,7 @@ int main()
         {
             // Only start pathfinding if a maze isn't currently generating,
             // pathfinding isn't already running, and both start/end nodes exist
-            if (!mazeGenerationStarted && !bfsStarted && !dfsStarted && !dijkstraStarted)
+            if (!mazeGenerationStarted && !bfsStarted && !dfsStarted && !dijkstraStarted && !astarStarted)
             {
                 if (startX != -1 && startY != -1 && endX != -1 && endY != -1) {
                     // Reset previous paths/visited, but keep walls intact
@@ -291,6 +297,8 @@ int main()
                         startDFS(startX, startY);
                     } else if (currentAlgorithm == 2) {
                         startDijkstra(startX, startY);
+                    } else if (currentAlgorithm == 3) {
+                        startAStar(startX, startY);
                     }
                 }
             }
@@ -301,12 +309,12 @@ int main()
         static double lastStepTime = 0.0;
         double currentTime = glfwGetTime();
 
-        if ((bfsStarted || dfsStarted || dijkstraStarted) && !foundEnd)
+        if ((bfsStarted || dfsStarted || dijkstraStarted || astarStarted) && !foundEnd)
         {
             if (isInstant)
             {
                 // Loop repeatedly in a single frame until it hits a wall or finds the end
-                while ((bfsStarted || dfsStarted || dijkstraStarted) && !foundEnd)
+                while ((bfsStarted || dfsStarted || dijkstraStarted || astarStarted) && !foundEnd)
                 {
                     if (currentAlgorithm == 0) {
                         bfsStep();
@@ -314,6 +322,8 @@ int main()
                         dfsStep();
                     } else if (currentAlgorithm == 2) {
                         dijkstraStep();
+                    } else if (currentAlgorithm == 3) {
+                        astarStep();
                     }
                 }
             }
@@ -328,6 +338,8 @@ int main()
                         dfsStep();
                     } else if (currentAlgorithm == 2) {
                         dijkstraStep();
+                    } else if (currentAlgorithm == 3) {
+                        astarStep();
                     }
                     lastStepTime = currentTime;
                 }
@@ -388,6 +400,9 @@ int main()
             } else if (currentAlgorithm == 2) {
                 buildDijkstraPath(endX, endY);
                 dijkstraStarted = false;
+            } else if (currentAlgorithm == 3) {
+                buildAStarPath(endX, endY);
+                astarStarted = false;
             }
         }
 
@@ -397,7 +412,7 @@ int main()
         if (!io.WantCaptureMouse)
         {
             // BUG 3 FIX: Wrap mouse inputs completely. If an algorithm or maze is active, mouse modifications are strictly locked out
-            if (!bfsStarted && !dfsStarted && !mazeGenerationStarted)
+            if (!bfsStarted && !dfsStarted && !dijkstraStarted && !astarStarted && !mazeGenerationStarted)
             {
                 Cell c = getCellFromMouse(window);
                 int x = c.x;
