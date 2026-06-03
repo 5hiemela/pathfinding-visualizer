@@ -10,19 +10,19 @@ This project visualizes classic graph algorithms and maze generation techniques 
 - [X] Depth-First Search (DFS)
 - [X] Dijkstra’s Algorithm
 - [X] A* Search
-- [ ] Bidirectional Search
+- [X] Bidirectional Search
 
 ### Maze Generation
 - [X] Recursive Backtracking
-- [ ] Prim’s Algorithm
-- [ ] Kruskal’s Algorithm
+- [X] Prim’s Algorithm
+- [X] Kruskal’s Algorithm
 
 ## Roadmap
 - [X] Real-time step-by-step visualization
 - [X] Interactive grid system
 - [X] Adjustable execution speed
 - [X] Pause / Resume controls
-- [ ] Instant run / Live edit
+- [X] Instant run
 - [X] Algorithm selection UI
 - [ ] Performance timing display
 - [X] Weighted nodes
