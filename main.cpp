@@ -13,6 +13,7 @@
 #include "Pathfinding/AStar.h"
 #include "Pathfinding/Bidirectional.h"
 #include "Maze/RecursiveBacktrack.h"
+#include "Maze/Prims.h"
 
 void drawCell(float x, float y, float size)
 {
@@ -254,7 +255,7 @@ int main()
         ImGui::Separator();
         ImGui::Text("Maze Generation");
 
-        const char* mazeAlgorithms[] = { "Recursive Backtracking" };
+        const char* mazeAlgorithms[] = { "Recursive Backtracking", "Prim's Algorithm" };
 
         // Disable changing maze algorithm if any process is running
         if (mazeGenerationStarted || ((bfsStarted || dfsStarted || dijkstraStarted || astarStarted || bidirectionalStarted) && !foundEnd)) {
@@ -297,12 +298,11 @@ int main()
                 endY = -1;
 
                 // Generates whichever algorithm is selected
-                if (currentMazeAlgorithm == 0)
-                {
+                if (currentMazeAlgorithm == 0) {
                     initRecursiveBacktrack(startX, startY);
+                } else if (currentMazeAlgorithm == 1) {
+                    initPrims(startX, startY);
                 }
-                // Future algorithms will be here:
-                // else if (currentMazeAlgorithm == 1) { initPrims(startX, startY); }
 
                 mazeGenerationStarted = true;
             }
@@ -398,6 +398,8 @@ int main()
                 {
                     if (currentMazeAlgorithm == 0) {
                         mazeDone = recursiveBacktrackStep();
+                    } else if (currentMazeAlgorithm == 1) {
+                        mazeDone = primsStep();
                     }
                 }
 
@@ -415,6 +417,8 @@ int main()
 
                     if (currentMazeAlgorithm == 0) {
                         mazeDone = recursiveBacktrackStep();
+                    } else if (currentMazeAlgorithm == 1) {
+                        mazeDone = primsStep();
                     }
 
                     if (mazeDone)

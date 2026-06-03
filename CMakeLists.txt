@@ -31,6 +31,8 @@ add_executable(PathfindingVisualizer
         Pathfinding/AStar.h
         Pathfinding/Bidirectional.cpp
         Pathfinding/Bidirectional.h
+        Maze/Prims.cpp
+        Maze/Prims.h
 )
 
 target_include_directories(PathfindingVisualizer PRIVATE
