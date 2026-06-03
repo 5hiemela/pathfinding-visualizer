@@ -33,6 +33,8 @@ add_executable(PathfindingVisualizer
         Pathfinding/Bidirectional.h
         Maze/Prims.cpp
         Maze/Prims.h
+        Maze/Kruskals.cpp
+        Maze/Kruskals.h
 )
 
 target_include_directories(PathfindingVisualizer PRIVATE

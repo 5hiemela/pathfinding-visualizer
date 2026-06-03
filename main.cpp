@@ -14,6 +14,7 @@
 #include "Pathfinding/Bidirectional.h"
 #include "Maze/RecursiveBacktrack.h"
 #include "Maze/Prims.h"
+#include "Maze/Kruskals.h"
 
 void drawCell(float x, float y, float size)
 {
@@ -257,7 +258,7 @@ int main()
         ImGui::Separator();
         ImGui::Text("Maze Generation");
 
-        const char* mazeAlgorithms[] = { "Recursive Backtracking", "Prim's Algorithm" };
+        const char* mazeAlgorithms[] = { "Recursive Backtracking", "Prim's Algorithm", "Kruskal's Algorithm" };
 
         if (mazeGenerationStarted || ((bfsStarted || dfsStarted || dijkstraStarted || astarStarted || bidirectionalStarted) && !foundEnd)) {
             ImGui::TextDisabled("%s", mazeAlgorithms[currentMazeAlgorithm]);
@@ -296,6 +297,8 @@ int main()
                     initRecursiveBacktrack(startX, startY);
                 } else if (currentMazeAlgorithm == 1) {
                     initPrims(startX, startY);
+                } else if (currentMazeAlgorithm == 2) {
+                    initKruskals(startX, startY);
                 }
 
                 mazeGenerationStarted = true;
@@ -388,6 +391,8 @@ int main()
                         mazeDone = recursiveBacktrackStep();
                     } else if (currentMazeAlgorithm == 1) {
                         mazeDone = primsStep();
+                    } else if (currentMazeAlgorithm == 2) {
+                        mazeDone = kruskalsStep();
                     }
                 }
                 grid[startY][startX].isStart = true;
@@ -404,6 +409,8 @@ int main()
                         mazeDone = recursiveBacktrackStep();
                     } else if (currentMazeAlgorithm == 1) {
                         mazeDone = primsStep();
+                    } else if (currentMazeAlgorithm == 2) {
+                        mazeDone = kruskalsStep();
                     }
 
                     if (mazeDone)
