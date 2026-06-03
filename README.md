@@ -24,7 +24,7 @@ This project visualizes classic graph algorithms and maze generation techniques 
 - [X] Pause / Resume controls
 - [X] Instant run
 - [X] Algorithm selection UI
-- [ ] Performance timing display
+- [X] Performance timing display
 - [X] Weighted nodes
 
 ## Tech Stack
