@@ -109,10 +109,22 @@ int main()
         ImGui::Separator();
 
         // Tool Selector
-        ImGui::Text("Editing Tool:");
+        bool isSimulationRunning = ((bfsStarted || dfsStarted || dijkstraStarted || astarStarted || bidirectionalStarted) && !foundEnd) || mazeGenerationStarted;
+
+        if (isSimulationRunning) {
+            ImGui::TextDisabled("Editing Tool: (Disabled while algorithm is running)");
+            ImGui::BeginDisabled();
+        } else {
+            ImGui::Text("Editing Tool:");
+        }
+
         const char* tools[] = { "Wall (Infinity)", "Sand (Weight 3)", "Mud (Weight 5)" };
-        // Use currentTool variable to track selection
         ImGui::Combo("##ToolCombo", &currentTool, tools, IM_ARRAYSIZE(tools));
+
+        if (isSimulationRunning) {
+            ImGui::EndDisabled();
+        }
+
         ImGui::Spacing();
         ImGui::Separator();
 
@@ -153,8 +165,6 @@ int main()
         ImGui::Separator();
         ImGui::Text("Simulation Controls");
 
-        // Only show the Pause/Resume button if an algorithm or maze is running
-        // Maze generation doesn't use foundEND, so it's handled separately
         if (((bfsStarted || dfsStarted || dijkstraStarted || astarStarted || bidirectionalStarted) && !foundEnd) || mazeGenerationStarted)
         {
             if (isPaused)
@@ -179,7 +189,6 @@ int main()
 
         ImGui::Checkbox("Instant Run", &isInstant);
 
-        // Gray out the speed slider if Instant Run is active
         if (isInstant) {
             ImGui::TextDisabled("Speed Slider (Disabled in Instant Mode)");
         } else {
@@ -199,30 +208,23 @@ int main()
             "Bidirectional BFS"
         };
 
-        // Disable changing the selection ONLY if an algorithm is actively running
         if (((bfsStarted || dfsStarted || dijkstraStarted || astarStarted || bidirectionalStarted) && !foundEnd) || mazeGenerationStarted) {
             ImGui::TextDisabled("%s", algorithms[currentAlgorithm]);
         } else {
-
             if (ImGui::Combo("##AlgoCombo", &currentAlgorithm, algorithms, IM_ARRAYSIZE(algorithms)))
             {
-                // Wipe all active tracking flags so they don't bleed over
                 bfsStarted = false;
                 dfsStarted = false;
                 dijkstraStarted = false;
                 astarStarted = false;
                 bidirectionalStarted = false;
                 foundEnd = false;
-
                 collisionNode = {-1, -1};
-
-                // Remove the old yellow/blue visuals immediately on click
                 resetSearchState();
             }
         }
 
         if (ImGui::Button("Generate Path")) {
-            // Lock out generation ONLY if a maze is building or an algorithm is actively ticking
             if (!mazeGenerationStarted)
             {
                 if (startX != -1 && startY != -1 && endX != -1 && endY != -1)
@@ -257,7 +259,6 @@ int main()
 
         const char* mazeAlgorithms[] = { "Recursive Backtracking", "Prim's Algorithm" };
 
-        // Disable changing maze algorithm if any process is running
         if (mazeGenerationStarted || ((bfsStarted || dfsStarted || dijkstraStarted || astarStarted || bidirectionalStarted) && !foundEnd)) {
             ImGui::TextDisabled("%s", mazeAlgorithms[currentMazeAlgorithm]);
         } else {
@@ -268,36 +269,29 @@ int main()
         {
             if (!bfsStarted && !dfsStarted && !dijkstraStarted && !astarStarted && !bidirectionalStarted && !mazeGenerationStarted)
             {
-                // Reset pathfinding visuals
                 resetSearchState();
+                foundEnd = false; // wipe path flag before building walls
 
-                // BUG FIX: Wipe the grid completely clean of ALL walls and old node flags
                 for (int y = 0; y < GRID_HEIGHT; y++) {
                     for (int x = 0; x < GRID_WIDTH; x++) {
                         grid[y][x].isWall = false;
-                        grid[y][x].isStart = false; // Clear old start node on the grid cells
-                        grid[y][x].isEnd = false;   // Clear old end node on the grid cells
+                        grid[y][x].isStart = false;
+                        grid[y][x].isEnd = false;
                     }
                 }
 
-                // Keep our actual tracking coordinates, or default if missing
                 if (startX == -1 || startY == -1) {
                     startX = 1;
                     startY = 1;
                 }
 
-                // Align to odd coordinates for the maze math
                 if (startX % 2 == 0) startX++;
                 if (startY % 2 == 0) startY++;
 
-                // Reinforce the start node state safely on the grid
                 grid[startY][startX].isStart = true;
-
-                // Clear the end node coordinates entirely since the maze changes everything
                 endX = -1;
                 endY = -1;
 
-                // Generates whichever algorithm is selected
                 if (currentMazeAlgorithm == 0) {
                     initRecursiveBacktrack(startX, startY);
                 } else if (currentMazeAlgorithm == 1) {
@@ -311,20 +305,17 @@ int main()
         ImGui::End();
         ImGui::Render();
 
-        // Space key starts the pathfinding algorithm
+        // Space key handles algorithm trigger
         static bool spacePressedLastFrame = false;
         bool spacePressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
 
         if (spacePressed && !spacePressedLastFrame)
         {
-            // Only start pathfinding if a maze isn't currently generating,
-            // pathfinding isn't already running, and both start/end nodes exist
             if (!mazeGenerationStarted && !bfsStarted && !dfsStarted && !dijkstraStarted && !astarStarted && !bidirectionalStarted)
             {
                 if (startX != -1 && startY != -1 && endX != -1 && endY != -1) {
-                    // Reset previous paths/visited, but keep walls intact
                     resetSearchState();
-                    foundEnd = false;
+                    foundEnd = false; // Bug Fix: Force reset path terminal state cleanly on space re-run
 
                     if (currentAlgorithm == 0) {
                         startBFS(startX, startY);
@@ -350,7 +341,6 @@ int main()
         {
             if (isInstant)
             {
-                // Loop repeatedly in a single frame until it hits a wall or finds the end
                 while ((bfsStarted || dfsStarted || dijkstraStarted || astarStarted || bidirectionalStarted) && !foundEnd)
                 {
                     if (currentAlgorithm == 0) {
@@ -368,7 +358,6 @@ int main()
             }
             else if (!isPaused)
             {
-                // Frame-by-frame delay timer
                 if (currentTime - lastStepTime >= (double)delay)
                 {
                     if (currentAlgorithm == 0) {
@@ -392,7 +381,6 @@ int main()
         {
             if (isInstant)
             {
-                // Loop repeatedly in a single frame until the active algorithm returns true
                 bool mazeDone = false;
                 while (!mazeDone)
                 {
@@ -402,15 +390,12 @@ int main()
                         mazeDone = primsStep();
                     }
                 }
-
-                // BUG 2 FIX: Reinforce our start node on the grid properties when instant generation wraps up
                 grid[startY][startX].isStart = true;
                 grid[startY][startX].isWall = false;
                 mazeGenerationStarted = false;
             }
             else if (!isPaused)
             {
-                // Frame-by-frame delay timer
                 if (currentTime - lastStepTime >= (double)delay)
                 {
                     bool mazeDone = false;
@@ -423,7 +408,6 @@ int main()
 
                     if (mazeDone)
                     {
-                        // BUG 2 FIX: Reinforce our start node on the grid properties when frame-by-frame generation wraps up
                         grid[startY][startX].isStart = true;
                         grid[startY][startX].isWall = false;
                         mazeGenerationStarted = false;
@@ -436,7 +420,6 @@ int main()
         // Build path when done
         if (foundEnd)
         {
-            // Check bounds BEFORE touching the grid array
             if (endX >= 0 && endX < GRID_WIDTH && endY >= 0 && endY < GRID_HEIGHT)
             {
                 if (!grid[endY][endX].isPath)
@@ -454,7 +437,6 @@ int main()
                         buildAStarPath(endX, endY);
                         astarStarted = false;
                     } else if (currentAlgorithm == 4) {
-                        // Double check collisionNode
                         if (collisionNode.first != -1 && collisionNode.second != -1) {
                             buildBidirectionalPath(collisionNode.first, collisionNode.second);
                         }
@@ -472,7 +454,7 @@ int main()
 
         if (!io.WantCaptureMouse)
         {
-            // BUG 3 FIX: Wrap mouse inputs completely. If an algorithm or maze is active, mouse modifications are strictly locked out
+            // strictly lock out changes if active algorithm loop is running
             if (!bfsStarted && !dfsStarted && !dijkstraStarted && !astarStarted && !bidirectionalStarted && !mazeGenerationStarted)
             {
                 Cell c = getCellFromMouse(window);
@@ -481,32 +463,32 @@ int main()
 
                 if (x >= 0 && x < GRID_WIDTH && y >= 0 && y < GRID_HEIGHT)
                 {
-                    // Checks if Shift key is being held down
                     bool shiftPressed = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ||
                                          glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
 
-                    // Left Click: Place Wall node
+                    // Left Click: Place Wall/Weight node
                     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
                         if (!grid[y][x].isStart && !grid[y][x].isEnd) {
+                            // Bug Fix: Wipes old path data cleanly if user draws on grid after a finished run
+                            if (foundEnd) { foundEnd = false; resetSearchState(); }
+
                             if (shiftPressed) {
-                                // Eraser logic
                                 grid[y][x].isWall = false;
                                 grid[y][x].isSand = false;
                                 grid[y][x].isMud = false;
                                 grid[y][x].weight = 1;
                             } else {
-                                // Painting logic based on selected tool
-                                if (currentTool == 0) { // Wall
+                                if (currentTool == 0) {
                                     grid[y][x].isWall = true;
                                     grid[y][x].isSand = false;
                                     grid[y][x].isMud = false;
-                                    grid[y][x].weight = 1; // Walls don't need weight math
-                                } else if (currentTool == 1) { // Sand
+                                    grid[y][x].weight = 1;
+                                } else if (currentTool == 1) {
                                     grid[y][x].isWall = false;
                                     grid[y][x].isSand = true;
                                     grid[y][x].isMud = false;
                                     grid[y][x].weight = 3;
-                                } else if (currentTool == 2) { // Mud
+                                } else if (currentTool == 2) {
                                     grid[y][x].isWall = false;
                                     grid[y][x].isSand = false;
                                     grid[y][x].isMud = true;
@@ -520,13 +502,15 @@ int main()
                     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
                     {
                         if (!grid[y][x].isEnd) {
-                            // BUG 2 FIX: Check both the grid AND track our index variables cleanly to prevent ghost nodes
+                            // Bug Fix: Clear terminal path state before swapping nodes
+                            if (foundEnd) { foundEnd = false; resetSearchState(); }
+
                             if (startX != -1 && startY != -1) {
                                 grid[startY][startX].isStart = false;
                             }
                             startX = x; startY = y;
                             grid[y][x].isStart = true;
-                            grid[y][x].isWall = false; // Clear wall if placed over one
+                            grid[y][x].isWall = false;
                         }
                     }
 
@@ -534,13 +518,15 @@ int main()
                     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
                     {
                         if (!grid[y][x].isStart) {
-                            // BUG 2 FIX: Check both the grid AND track our index variables cleanly to prevent ghost nodes
+                            // Bug Fix: Clear terminal path state before swapping nodes so old tracking pointers aren't evaluated
+                            if (foundEnd) { foundEnd = false; resetSearchState(); }
+
                             if (endX != -1 && endY != -1) {
                                 grid[endY][endX].isEnd = false;
                             }
                             endX = x; endY = y;
                             grid[y][x].isEnd = true;
-                            grid[y][x].isWall = false; // Clear wall if placed over one
+                            grid[y][x].isWall = false;
                         }
                     }
                 }
