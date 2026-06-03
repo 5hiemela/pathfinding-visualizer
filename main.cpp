@@ -190,22 +190,50 @@ int main()
 
         // Algorithm Selection
         ImGui::Text("Select Algorithm:");
-        const char* algorithms[] = { "Breadth-First Search (BFS)", "Depth-First Search (DFS)", "Dijkstra's Algorithm", "A* Search", "Bidirectional BFS" };
+        const char* algorithms[] = {
+            "Breadth-First Search (BFS)",
+            "Depth-First Search (DFS)",
+            "Dijkstra's Algorithm",
+            "A* Search",
+            "Bidirectional BFS"
+        };
 
-        // Disable changing the algorithm while a simulation is actively running
+        // Disable changing the selection ONLY if an algorithm is actively running
         if (((bfsStarted || dfsStarted || dijkstraStarted || astarStarted || bidirectionalStarted) && !foundEnd) || mazeGenerationStarted) {
             ImGui::TextDisabled("%s", algorithms[currentAlgorithm]);
         } else {
-            ImGui::Combo("##AlgoCombo", &currentAlgorithm, algorithms, IM_ARRAYSIZE(algorithms));
+
+            if (ImGui::Combo("##AlgoCombo", &currentAlgorithm, algorithms, IM_ARRAYSIZE(algorithms)))
+            {
+                // Wipe all active tracking flags so they don't bleed over
+                bfsStarted = false;
+                dfsStarted = false;
+                dijkstraStarted = false;
+                astarStarted = false;
+                bidirectionalStarted = false;
+                foundEnd = false;
+
+                collisionNode = {-1, -1};
+
+                // Remove the old yellow/blue visuals immediately on click
+                resetSearchState();
+            }
         }
 
         if (ImGui::Button("Generate Path")) {
-            if (!mazeGenerationStarted && !bfsStarted && !dfsStarted && !dijkstraStarted && !astarStarted && !bidirectionalStarted)
+            // Lock out generation ONLY if a maze is building or an algorithm is actively ticking
+            if (!mazeGenerationStarted)
             {
                 if (startX != -1 && startY != -1 && endX != -1 && endY != -1)
                 {
-                    resetSearchState();
+                    bfsStarted = false;
+                    dfsStarted = false;
+                    dijkstraStarted = false;
+                    astarStarted = false;
+                    bidirectionalStarted = false;
                     foundEnd = false;
+
+                    resetSearchState();
 
                     if (currentAlgorithm == 0) {
                         startBFS(startX, startY);
@@ -402,23 +430,36 @@ int main()
         }
 
         // Build path when done
-        if (foundEnd && !grid[endY][endX].isPath)
+        if (foundEnd)
         {
-            if (currentAlgorithm == 0) {
-                buildBFSPath(endX, endY);
-                bfsStarted = false;
-            } else if (currentAlgorithm == 1) {
-                buildDFSPath(endX, endY);
-                dfsStarted = false;
-            } else if (currentAlgorithm == 2) {
-                buildDijkstraPath(endX, endY);
-                dijkstraStarted = false;
-            } else if (currentAlgorithm == 3) {
-                buildAStarPath(endX, endY);
-                astarStarted = false;
-            } else if (currentAlgorithm == 4) {
-                buildBidirectionalPath(collisionNode.first, collisionNode.second);
-                bidirectionalStarted = false;
+            // Check bounds BEFORE touching the grid array
+            if (endX >= 0 && endX < GRID_WIDTH && endY >= 0 && endY < GRID_HEIGHT)
+            {
+                if (!grid[endY][endX].isPath)
+                {
+                    if (currentAlgorithm == 0) {
+                        buildBFSPath(endX, endY);
+                        bfsStarted = false;
+                    } else if (currentAlgorithm == 1) {
+                        buildDFSPath(endX, endY);
+                        dfsStarted = false;
+                    } else if (currentAlgorithm == 2) {
+                        buildDijkstraPath(endX, endY);
+                        dijkstraStarted = false;
+                    } else if (currentAlgorithm == 3) {
+                        buildAStarPath(endX, endY);
+                        astarStarted = false;
+                    } else if (currentAlgorithm == 4) {
+                        // Double check collisionNode
+                        if (collisionNode.first != -1 && collisionNode.second != -1) {
+                            buildBidirectionalPath(collisionNode.first, collisionNode.second);
+                        }
+                        bidirectionalStarted = false;
+                    }
+                }
+            }
+            else {
+                foundEnd = false;
             }
         }
 
