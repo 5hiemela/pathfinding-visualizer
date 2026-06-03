@@ -16,6 +16,10 @@
 #include "Maze/Prims.h"
 #include "Maze/Kruskals.h"
 
+// Performance Tracking Metrics
+double totalCalculationTime = 0.0; // Accumulated execution time in milliseconds
+int totalSimulationSteps = 0;      // Total iterations/cells processed
+
 void drawCell(float x, float y, float size)
 {
     glBegin(GL_QUADS);
@@ -139,6 +143,8 @@ int main()
             bidirectionalStarted = false;
             mazeGenerationStarted = false;
             foundEnd = false;
+            totalCalculationTime = 0.0;
+            totalSimulationSteps = 0;
             resetSearchState();
         }
 
@@ -152,6 +158,8 @@ int main()
             bidirectionalStarted = false;
             mazeGenerationStarted = false;
             foundEnd = false;
+            totalCalculationTime = 0.0;
+            totalSimulationSteps = 0;
             resetSearchState();
             clearAllWalls();
 
@@ -221,6 +229,8 @@ int main()
                 bidirectionalStarted = false;
                 foundEnd = false;
                 collisionNode = {-1, -1};
+                totalCalculationTime = 0.0;
+                totalSimulationSteps = 0;
                 resetSearchState();
             }
         }
@@ -236,6 +246,8 @@ int main()
                     astarStarted = false;
                     bidirectionalStarted = false;
                     foundEnd = false;
+                    totalCalculationTime = 0.0;
+                    totalSimulationSteps = 0;
 
                     resetSearchState();
 
@@ -271,7 +283,9 @@ int main()
             if (!bfsStarted && !dfsStarted && !dijkstraStarted && !astarStarted && !bidirectionalStarted && !mazeGenerationStarted)
             {
                 resetSearchState();
-                foundEnd = false; // wipe path flag before building walls
+                foundEnd = false;
+                totalCalculationTime = 0.0;
+                totalSimulationSteps = 0;
 
                 for (int y = 0; y < GRID_HEIGHT; y++) {
                     for (int x = 0; x < GRID_WIDTH; x++) {
@@ -306,6 +320,31 @@ int main()
         }
 
         ImGui::End();
+
+        // Floating HUD Performance Overlay
+        ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x - 280.0f, 20.0f), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(260.0f, 95.0f), ImGuiCond_Always);
+
+        ImGuiWindowFlags overlayFlags = ImGuiWindowFlags_NoDecoration |
+                                        ImGuiWindowFlags_NoInputs |
+                                        ImGuiWindowFlags_AlwaysAutoResize |
+                                        ImGuiWindowFlags_NoSavedSettings |
+                                        ImGuiWindowFlags_NoFocusOnAppearing |
+                                        ImGuiWindowFlags_NoNav;
+
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.05f, 0.05f, 0.05f, 0.75f));
+
+        if (ImGui::Begin("Performance HUD", nullptr, overlayFlags))
+        {
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.75f, 1.0f), "PERFORMANCE METRICS");
+            ImGui::Separator();
+
+            ImGui::Text("Steps Processed: %d", totalSimulationSteps);
+            ImGui::Text("Execution Time:  %.3f ms", totalCalculationTime);
+        }
+        ImGui::End();
+        ImGui::PopStyleColor();
+
         ImGui::Render();
 
         // Space key handles algorithm trigger
@@ -318,7 +357,9 @@ int main()
             {
                 if (startX != -1 && startY != -1 && endX != -1 && endY != -1) {
                     resetSearchState();
-                    foundEnd = false; // Bug Fix: Force reset path terminal state cleanly on space re-run
+                    foundEnd = false;
+                    totalCalculationTime = 0.0;
+                    totalSimulationSteps = 0;
 
                     if (currentAlgorithm == 0) {
                         startBFS(startX, startY);
@@ -344,8 +385,10 @@ int main()
         {
             if (isInstant)
             {
+                double startTime = glfwGetTime();
                 while ((bfsStarted || dfsStarted || dijkstraStarted || astarStarted || bidirectionalStarted) && !foundEnd)
                 {
+                    totalSimulationSteps++;
                     if (currentAlgorithm == 0) {
                         bfsStep();
                     } else if (currentAlgorithm == 1) {
@@ -358,11 +401,15 @@ int main()
                         bidirectionalStep();
                     }
                 }
+                totalCalculationTime = (glfwGetTime() - startTime) * 1000.0;
             }
             else if (!isPaused)
             {
                 if (currentTime - lastStepTime >= (double)delay)
                 {
+                    double startTime = glfwGetTime();
+                    totalSimulationSteps++;
+
                     if (currentAlgorithm == 0) {
                         bfsStep();
                     } else if (currentAlgorithm == 1) {
@@ -374,6 +421,8 @@ int main()
                     } else if (currentAlgorithm == 4) {
                         bidirectionalStep();
                     }
+
+                    totalCalculationTime += (glfwGetTime() - startTime) * 1000.0;
                     lastStepTime = currentTime;
                 }
             }
@@ -384,9 +433,11 @@ int main()
         {
             if (isInstant)
             {
+                double startTime = glfwGetTime();
                 bool mazeDone = false;
                 while (!mazeDone)
                 {
+                    totalSimulationSteps++;
                     if (currentMazeAlgorithm == 0) {
                         mazeDone = recursiveBacktrackStep();
                     } else if (currentMazeAlgorithm == 1) {
@@ -395,6 +446,8 @@ int main()
                         mazeDone = kruskalsStep();
                     }
                 }
+                totalCalculationTime = (glfwGetTime() - startTime) * 1000.0;
+
                 grid[startY][startX].isStart = true;
                 grid[startY][startX].isWall = false;
                 mazeGenerationStarted = false;
@@ -403,6 +456,8 @@ int main()
             {
                 if (currentTime - lastStepTime >= (double)delay)
                 {
+                    double startTime = glfwGetTime();
+                    totalSimulationSteps++;
                     bool mazeDone = false;
 
                     if (currentMazeAlgorithm == 0) {
@@ -412,6 +467,8 @@ int main()
                     } else if (currentMazeAlgorithm == 2) {
                         mazeDone = kruskalsStep();
                     }
+
+                    totalCalculationTime += (glfwGetTime() - startTime) * 1000.0;
 
                     if (mazeDone)
                     {
@@ -461,7 +518,6 @@ int main()
 
         if (!io.WantCaptureMouse)
         {
-            // strictly lock out changes if active algorithm loop is running
             if (!bfsStarted && !dfsStarted && !dijkstraStarted && !astarStarted && !bidirectionalStarted && !mazeGenerationStarted)
             {
                 Cell c = getCellFromMouse(window);
@@ -476,7 +532,6 @@ int main()
                     // Left Click: Place Wall/Weight node
                     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
                         if (!grid[y][x].isStart && !grid[y][x].isEnd) {
-                            // Bug Fix: Wipes old path data cleanly if user draws on grid after a finished run
                             if (foundEnd) { foundEnd = false; resetSearchState(); }
 
                             if (shiftPressed) {
@@ -509,7 +564,6 @@ int main()
                     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
                     {
                         if (!grid[y][x].isEnd) {
-                            // Bug Fix: Clear terminal path state before swapping nodes
                             if (foundEnd) { foundEnd = false; resetSearchState(); }
 
                             if (startX != -1 && startY != -1) {
@@ -525,7 +579,6 @@ int main()
                     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
                     {
                         if (!grid[y][x].isStart) {
-                            // Bug Fix: Clear terminal path state before swapping nodes so old tracking pointers aren't evaluated
                             if (foundEnd) { foundEnd = false; resetSearchState(); }
 
                             if (endX != -1 && endY != -1) {
