@@ -108,9 +108,21 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // ImGui Control Panel
-        ImGui::Begin("Control Panel");
-        ImGui::Text("GLFW + ImGui Visualizer");
+        // Bottom Control Panel
+        float panelHeight = 160.0f;
+
+        // Pin to bottom
+        ImGui::SetNextWindowPos(ImVec2(0.0f, ImGui::GetIO().DisplaySize.y - panelHeight), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, panelHeight), ImGuiCond_Always);
+
+        // Lock window properties
+        ImGuiWindowFlags dashboardFlags = ImGuiWindowFlags_NoTitleBar |
+                                          ImGuiWindowFlags_NoMove |
+                                          ImGuiWindowFlags_NoResize |
+                                          ImGuiWindowFlags_NoCollapse;
+
+        ImGui::Begin("Control Panel", nullptr, dashboardFlags);
+        ImGui::Text("Pathfinding & Maze Visualizer");
         ImGui::Separator();
 
         // Tool Selector
